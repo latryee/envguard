@@ -1,20 +1,54 @@
+<p align="center">
+  <img src="assets/social-preview.png" alt="envguard banner" width="100%" />
+</p>
+
 <h1 align="center">🛡️ envguard</h1>
 
 <p align="center">
-  <strong>Zero-Config Git Secret Leaks Detector, Semantic Type Validator & <code>.env.example</code> Synchronizer</strong>
+  <strong>Zero-Config Git Secret Leaks Detector, Semantic Type Validator &amp; <code>.env.example</code> Synchronizer</strong>
 </p>
 
 <p align="center">
-  <a href="https://npmjs.com/package/envguard"><img src="https://img.shields.io/npm/v/envguard.svg?color=38bdf8&style=flat-square" alt="NPM version" /></a>
   <a href="https://github.com/latryee/envguard/actions"><img src="https://img.shields.io/github/actions/workflow/status/latryee/envguard/ci.yml?branch=main&style=flat-square" alt="Build Status" /></a>
   <a href="https://github.com/latryee/envguard/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="License" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/language-TypeScript-blue.svg?style=flat-square" alt="TypeScript" /></a>
   <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/tests-100%25%20passing-brightgreen.svg?style=flat-square" alt="Tests" /></a>
+  <a href="#-competitive-matrix"><img src="https://img.shields.io/badge/zero-cloud%20dependency-emerald.svg?style=flat-square" alt="Zero Cloud" /></a>
+</p>
+
+<p align="center">
+  <img src="assets/demo.png" alt="envguard terminal demo" width="100%" />
 </p>
 
 <br />
 
-## 🎯 The Problem
+## ❓ Why Another Environment Tool?
+
+Existing tools force developers to choose between heavy SaaS lock-in or fragmented scripts:
+- **Cloud Secrets Managers** (*Doppler, 1Password, HashiCorp Vault*) are powerful for production infrastructure, but add cloud latency, account provisioning overhead, and internet dependencies for simple local development.
+- **Git Secret Scanners** (*Gitleaks, Trufflehog*) detect regexes in commit history, but are **100% blind to schema drift, missing variables, or runtime type mismatches** (e.g. `PORT` entered as text or out of range).
+- **Runtime Validators** (*Zod, Envalid, t3-env*) only protect your application *after* boot, are tied to specific web frameworks, and do not keep `.env.example` templates synchronized for your team.
+
+> **`envguard` operates at the developer workflow boundary:** It inspects your actual code references across any language, validates semantic types, blocks secret leaks with Shannon entropy, and keeps `.env.example` continuously up-to-date with safe placeholders — **100% offline, in milliseconds, with zero configuration.**
+
+---
+
+## 🥊 Competitive Matrix
+
+| Feature | `envguard` | `dotenv-vault` | `Doppler` | `Gitleaks` | `t3-env / Zod` |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| **Zero Cloud / 100% Offline** | ✅ **Yes** | ❌ Requires Cloud | ❌ Cloud SaaS | ✅ Yes | ✅ Yes |
+| **Zero-Config Setup (`npx`)** | ✅ **Instant** | ❌ Vault login | ❌ CLI auth | ⚠️ Config needed | ❌ In-code schema |
+| **`.env.example` Auto-Sync & Masking** | ✅ **Automated** | ❌ No | ❌ No | ❌ No | ❌ No |
+| **Multi-Language AST Reference Scanner** | ✅ **JS/TS/Py/Go/Rust** | ❌ No | ❌ No | ❌ Git regex only | ❌ TS/JS only |
+| **Semantic Type Validation (Port, URL, IP)** | ✅ **Built-in** | ❌ Strings only | ❌ Strings only | ❌ No | ✅ In-code |
+| **Shannon Entropy Secret Detection** | ✅ **Built-in** | ❌ No | ❌ No | ✅ Built-in | ❌ No |
+| **1-Click Git Pre-Commit Hook** | ✅ **Built-in** | ❌ No | ❌ No | ⚠️ Custom setup | ❌ No |
+| **Ambient TypeScript Type Gen (`env.d.ts`)** | ✅ **Built-in** | ❌ No | ❌ No | ❌ No | ⚠️ Manual schema |
+
+---
+
+## 🎯 The Core Problems It Solves
 
 When a new engineer joins a team or clones a repository:
 1. **`.env.example` is hopelessly outdated:** Variables added over months are undocumented, leading to broken onboarding and runtime crashes.
@@ -23,74 +57,44 @@ When a new engineer joins a team or clones a repository:
 
 ---
 
-## ⚡️ The Solution: `envguard`
+## ⚡️ Quickstart
 
-`envguard` parses actual environment variable references across your codebase, validates `.env` against `.env.example`, verifies variable types, catches leaked credentials with Shannon entropy scanning, and automatically synchronizes templates before anything hits Git.
+Run instantly with zero configuration in any repository:
 
 ```bash
-# Run instantly with zero configuration:
+# Run full scan and drift check
 npx envguard
 ```
 
-```
-  ███████╗███╗   ██╗██╗   ██╗ ██████╗ ██╗   ██╗ █████╗ ██████╗ ██████╗ 
-  ██╔════╝████╗  ██║██║   ██║██╔════╝ ██║   ██║██╔══██╗██╔══██╗██╔══██╗
-  █████╗  ██╔██╗ ██║██║   ██║██║  ███╗██║   ██║███████║██████╔╝██║  ██║
-  ██╔══╝  ██║╚██╗██║╚██╗ ██╔╝██║   ██║██║   ██║██╔══██║██╔══██╗██║  ██║
-  ███████╗██║ ╚████║ ╚████╔╝ ╚██████╔╝╚██████╔╝██║  ██║██║  ██║██████╔╝
-  ╚══════╝╚═╝  ╚═══╝  ╚═══╝   ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ 
-  v1.0.0 — Zero-Config Git Secret Leaks & Type Validator
-
-❌ Missing in .env (Required - Runtime Crash Risk) [1]
-  ✖ STRIPE_WEBHOOK_SECRET (referenced in src/api/billing.ts:14)
-
-❌ Type & Format Mismatches [1]
-  ✖ PORT (line 1): Expected valid port number (1-65535), got "999999".
-    Expected: port (1-65535) | Got: 999999
-
-⚠️ Drift: Missing in .env.example (Undocumented Keys) [1]
-  ▲ REDIS_CACHE_URL (used in src/lib/redis.ts:8)
-  💡 Fix: Run npx envguard sync to automatically update .env.example
-
-────────────────────────────────────────────────────────────
-  ✖ Failed: 2 errors, 1 warning
-────────────────────────────────────────────────────────────
-```
-
----
-
-## ✨ Features
-
-- **🚀 Zero Configuration**: Works instantly with zero setup files across Node.js, Python, Go, Rust, PHP, Ruby, and Dockerfiles.
-- **🔍 Multi-Language Code AST & Regex Scanner**: Extracts `process.env.VAR`, `import.meta.env.VAR`, `os.environ`, `getenv()`, `std::env::var()`, and Docker `ENV` references.
-- **🚨 Curated Secret Leak & Shannon Entropy Detection**: Catches AWS, OpenAI, Anthropic Claude, Stripe, GitHub, Slack, SendGrid, and High Shannon Entropy tokens before commits.
-- **✅ Semantic Type Validation**: Validates `port` (1-65535), `boolean`, `integer`, `number`, `url`, `email`, `ip`, `json`, `uuid`, `base64`, and custom `enum(a,b,c)`.
-- **🔄 Auto-Sync & Safe Masking (`envguard sync`)**: Updates `.env.example` with safe dummy values (e.g. `your_openai_api_key_here`, `postgresql://localhost:5432/mydb`) and adds inline type annotations.
-- **📝 TypeScript Ambient Type Generator (`envguard gen-types`)**: Generates `env.d.ts` for full IDE autocomplete on `process.env` and `import.meta.env`.
-- **🪝 1-Click Git Pre-commit Hook (`envguard hook install`)**: Prevents commits containing secrets or missing variables.
-
----
-
-## 📦 Installation & Usage
-
-### 1. Instant Run (Recommended)
+### Install Globally or as a Dev Dependency
 ```bash
-npx envguard
-```
-
-### 2. Global / Local CLI
-```bash
+# Global CLI
 npm install -g envguard
-# or in your project:
+
+# Or locally in your project
 npm install -D envguard
 ```
+
+---
+
+## 🪝 1-Click Git Pre-Commit Hook
+
+Never accidentally push real secrets or missing variables to GitHub again:
+
+```bash
+npx envguard hook install
+```
+
+<p align="center">
+  <img src="assets/hook-demo.png" alt="envguard git hook interception demo" width="100%" />
+</p>
 
 ---
 
 ## 🛠️ CLI Commands & Workflows
 
 ### `envguard check` (Default)
-Performs complete scan and checks for drift, type errors, missing keys, and secret leaks.
+Performs complete scan across project source code, `.env`, and `.env.example`:
 ```bash
 # Standard check
 npx envguard
@@ -101,7 +105,7 @@ npx envguard --strict
 # Check only Git staged files (ultra fast)
 npx envguard --staged
 
-# Output format for CI/CD
+# Formatted output for CI/CD pipelines
 npx envguard --format github
 npx envguard --format json
 ```
@@ -128,15 +132,10 @@ declare global {
       PORT: `${number}` | string;
       NODE_ENV: 'development' | 'production';
       DATABASE_URL: string;
+      ENABLE_METRICS?: 'true' | 'false' | '1' | '0';
     }
   }
 }
-```
-
-### `envguard hook install`
-Installs a native `.git/hooks/pre-commit` (or `.husky/pre-commit`) hook to block bad commits automatically:
-```bash
-npx envguard hook install
 ```
 
 ### `envguard init`
