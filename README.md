@@ -63,16 +63,16 @@ Run instantly with zero configuration in any repository:
 
 ```bash
 # Run full scan and drift check
-npx envguard
+npx @latryee/envguard
 ```
 
 ### Install Globally or as a Dev Dependency
 ```bash
 # Global CLI
-npm install -g envguard
+npm install -g @latryee/envguard
 
 # Or locally in your project
-npm install -D envguard
+npm install -D @latryee/envguard
 ```
 
 ---
