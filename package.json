@@ -59,6 +59,7 @@
     "dev": "tsx src/cli/index.ts",
     "build": "tsup",
     "build:extension": "tsup --config packages/vscode-extension/tsup.config.ts",
+    "package:extension": "npm run build:extension && npx @vscode/vsce package --no-dependencies -o ../../vscode-envguard.vsix --prefix packages/vscode-extension",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

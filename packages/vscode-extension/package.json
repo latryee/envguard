@@ -4,7 +4,11 @@
   "description": "Real-time secret leaks detection, framework client-leak guard, Shannon entropy analysis, and .env.example drift validation for VS Code & Cursor.",
   "version": "1.2.0",
   "publisher": "latrye",
-  "icon": "icon.png",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/latryee/envguard.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
