@@ -1,0 +1,117 @@
+{
+  "name": "vscode-envguard",
+  "displayName": "EnvGuard - Zero-Trust Secrets & Environment Linter",
+  "description": "Real-time secret leaks detection, framework client-leak guard, Shannon entropy analysis, and .env.example drift validation for VS Code & Cursor.",
+  "version": "1.2.0",
+  "publisher": "latrye",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages",
+    "Security"
+  ],
+  "keywords": [
+    "env",
+    "dotenv",
+    "security",
+    "secrets",
+    "entropy",
+    "leak",
+    "nextjs",
+    "vite",
+    "drift"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onLanguage:dotenv",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact",
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
+    "onLanguage:vue",
+    "onLanguage:svelte",
+    "workspaceContains:.env",
+    "workspaceContains:.env.example"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "envguard.check",
+        "title": "EnvGuard: Run Environment & Security Check",
+        "category": "EnvGuard"
+      },
+      {
+        "command": "envguard.sync",
+        "title": "EnvGuard: Synchronize .env.example",
+        "category": "EnvGuard"
+      },
+      {
+        "command": "envguard.format",
+        "title": "EnvGuard: Format & Sort .env File",
+        "category": "EnvGuard"
+      },
+      {
+        "command": "envguard.generateTypes",
+        "title": "EnvGuard: Generate TypeScript Environment Types (env.d.ts)",
+        "category": "EnvGuard"
+      },
+      {
+        "command": "envguard.encrypt",
+        "title": "EnvGuard: Encrypt .env File (AES-256-GCM)",
+        "category": "EnvGuard"
+      },
+      {
+        "command": "envguard.decrypt",
+        "title": "EnvGuard: Decrypt .env File",
+        "category": "EnvGuard"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "EnvGuard Configuration",
+      "properties": {
+        "envguard.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable real-time EnvGuard environment & secret leak analysis."
+        },
+        "envguard.strict": {
+          "type": "boolean",
+          "default": false,
+          "description": "Treat all warnings (e.g. undocumented variables) as blocking errors."
+        },
+        "envguard.envPath": {
+          "type": "string",
+          "default": ".env",
+          "description": "Path to primary environment file relative to workspace root."
+        },
+        "envguard.examplePath": {
+          "type": "string",
+          "default": ".env.example",
+          "description": "Path to schema template file relative to workspace root."
+        },
+        "envguard.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show EnvGuard environment health indicator in the Status Bar."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsup src/extension.ts --format cjs --external vscode --no-shims",
+    "watch": "tsup src/extension.ts --format cjs --external vscode --watch"
+  },
+  "dependencies": {
+    "@latrye/envguard": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.3"
+  }
+}
