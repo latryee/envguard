@@ -9,6 +9,9 @@
     "type": "git",
     "url": "git+https://github.com/latryee/envguard.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "bugs": {
     "url": "https://github.com/latryee/envguard/issues"
   },
