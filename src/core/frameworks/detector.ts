@@ -128,6 +128,15 @@ export function detectFramework(cwd = process.cwd()): FrameworkInfo {
   if (fs.existsSync(path.join(cwd, 'main.py')) || fs.existsSync(path.join(cwd, 'app', 'main.py'))) {
     return FRAMEWORK_DEFINITIONS.fastapi;
   }
+  if (fs.existsSync(path.join(cwd, 'requirements.txt'))) {
+    try {
+      const req = fs.readFileSync(path.join(cwd, 'requirements.txt'), 'utf8').toLowerCase();
+      if (req.includes('fastapi')) return FRAMEWORK_DEFINITIONS.fastapi;
+      if (req.includes('django')) return FRAMEWORK_DEFINITIONS.django;
+    } catch {
+      // ignore
+    }
+  }
 
   return FRAMEWORK_DEFINITIONS.generic;
 }

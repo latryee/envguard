@@ -152,8 +152,8 @@ export function parseInlineDirectives(content: string): FileInlineIgnores {
     const lineNum = i + 1;
     const line = lines[i];
 
-    // Block disable/enable
-    if (/envguard-disable\b/i.test(line) && !/envguard-disable-next-line/i.test(line)) {
+    // Block disable/enable (exclude -line and -next-line)
+    if (/envguard-disable(?!\s*-(?:line|next-line))\b/i.test(line)) {
       blockDisabled = true;
     }
     if (/envguard-enable\b/i.test(line)) {
@@ -187,8 +187,8 @@ export function parseInlineDirectives(content: string): FileInlineIgnores {
       }
     }
 
-    // Inline ignore on the same line: // envguard-ignore or # envguard-ignore
-    const sameLineMatch = line.match(/(?:\/\/|#|\/\*)\s*envguard-(?:ignore|disable)(?!\s*-\s*next-line)(?:\s+([a-zA-Z0-9_-]+))?/i);
+    // Inline ignore on the same line: // envguard-ignore or // envguard-disable-line
+    const sameLineMatch = line.match(/(?:\/\/|#|\/\*)\s*envguard-(?:ignore|disable)(?:-line)?(?!\s*-\s*next-line)(?:\s+([a-zA-Z0-9_:-]+))?/i);
     if (sameLineMatch) {
       const specific = sameLineMatch[1]?.trim();
       if (specific) {
