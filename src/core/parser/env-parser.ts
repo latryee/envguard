@@ -29,6 +29,12 @@ export function parseAnnotations(commentText: string): EnvAnnotations {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
+    } else if (
+      (rawType.toLowerCase().startsWith('regex(') || rawType.toLowerCase().startsWith('pattern(')) &&
+      rawType.endsWith(')')
+    ) {
+      annotations.type = 'regex';
+      annotations.pattern = rawType.slice(rawType.indexOf('(') + 1, -1).trim();
     } else {
       annotations.type = rawType.toLowerCase() as InferredType;
     }

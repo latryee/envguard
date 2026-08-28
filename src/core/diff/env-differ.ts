@@ -59,7 +59,9 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
         file: options.exampleAst.filePath || '.env.example',
         entropyThreshold: secretDetection.entropyThreshold,
         minLength: secretDetection.minLength,
-        allowHighEntropy: secretDetection.allowHighEntropy
+        allowHighEntropy: secretDetection.allowHighEntropy,
+        paranoid: secretDetection.paranoid,
+        minConfidence: secretDetection.minConfidence
       });
       secretLeaks.push(...findings);
     }
@@ -72,7 +74,9 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
         file: options.envAst.filePath || '.env',
         entropyThreshold: secretDetection.entropyThreshold,
         minLength: secretDetection.minLength,
-        allowHighEntropy: secretDetection.allowHighEntropy
+        allowHighEntropy: secretDetection.allowHighEntropy,
+        paranoid: secretDetection.paranoid,
+        minConfidence: secretDetection.minConfidence
       });
       secretLeaks.push(...findings);
     }
@@ -82,7 +86,6 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
   if (options.sourceSecrets && options.sourceSecrets.length > 0) {
     secretLeaks.push(...options.sourceSecrets);
   }
-
 
   // 2. Check for missing in .env
   // Keys in .env.example that are missing in .env

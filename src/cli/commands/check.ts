@@ -7,18 +7,23 @@ import { computeEnvDiff } from '../../core/diff/env-differ.js';
 import { renderTerminalReport } from '../../reporters/terminal-reporter.js';
 import { renderJsonReport } from '../../reporters/json-reporter.js';
 import { renderGitHubReport } from '../../reporters/github-reporter.js';
-import { getStagedFileContent, getStagedFiles, isGitRepository } from '../../core/git/git-utils.js';
+import { renderSarifReport } from '../../reporters/sarif-reporter.js';
+import { getStagedFileContent, getStagedFiles, isGitRepository, scanGitHistory } from '../../core/git/git-utils.js';
 import { getBanner } from '../ui/banners.js';
 import { loadConfig } from '../../core/config/config-loader.js';
+import { findWorkspaces } from '../../core/monorepo/workspaces.js';
 
 export interface CheckCommandOptions {
   env?: string;
   example?: string;
   strict?: boolean;
-  format?: 'terminal' | 'json' | 'github';
+  format?: 'terminal' | 'json' | 'github' | 'sarif';
   quiet?: boolean;
   verbose?: boolean;
   staged?: boolean;
+  paranoid?: boolean;
+  scanHistory?: boolean;
+  workspaces?: boolean;
   noBanner?: boolean;
   fix?: boolean;
 }
@@ -27,14 +32,81 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
   const cwd = process.cwd();
   const config = loadConfig(cwd);
 
-  const envFilePath = path.resolve(cwd, options.env || config.envFile);
-  const exampleFilePath = path.resolve(cwd, options.example || config.exampleFile);
   const isStrict = options.strict ?? config.strict;
+  const isParanoid = options.paranoid ?? config.paranoid ?? false;
+  const shouldScanHistory = options.scanHistory ?? config.scanHistory ?? false;
+  const isWorkspaces = options.workspaces ?? config.workspaces ?? false;
   const format = options.format || 'terminal';
 
   if (format === 'terminal' && !options.quiet && !options.noBanner) {
     console.log(getBanner('1.0.0'));
   }
+
+  // Workspaces mode
+  if (isWorkspaces) {
+    const wsPackages = await findWorkspaces(cwd);
+    if (wsPackages.length > 0) {
+      let anyErrors = false;
+      let anyWarnings = false;
+
+      for (const ws of wsPackages) {
+        if (!options.quiet && format === 'terminal') {
+          console.log(`\n📦 Checking workspace package: ${ws.name} (${ws.relPath})`);
+        }
+
+        let envAst: EnvFileAst | null = null;
+        if (fs.existsSync(ws.envPath)) {
+          envAst = parseEnv(fs.readFileSync(ws.envPath, 'utf8'), { filePath: ws.envPath });
+        }
+
+        let exampleAst: EnvFileAst | null = null;
+        if (fs.existsSync(ws.examplePath)) {
+          exampleAst = parseEnv(fs.readFileSync(ws.examplePath, 'utf8'), { filePath: ws.examplePath });
+        }
+
+        const scanResult = await scanCodebase({
+          cwd: ws.packageDir,
+          ignoredKeys: config.ignoredKeys,
+          includeSystemVars: config.includeSystemVars,
+          ignoreGlobs: config.ignoreGlobs,
+          paranoid: isParanoid,
+          staged: !!options.staged
+        });
+
+        const diffResult = computeEnvDiff({
+          envAst,
+          exampleAst,
+          codeKeys: scanResult.uniqueKeys,
+          codeReferences: scanResult.keyLocations,
+          sourceSecrets: scanResult.secretLeaks,
+          secretDetection: {
+            ...config.secretDetection,
+            paranoid: isParanoid
+          }
+        });
+
+        if (diffResult.hasErrors) anyErrors = true;
+        if (diffResult.hasWarnings) anyWarnings = true;
+
+        if (format === 'json') {
+          console.log(renderJsonReport(diffResult));
+        } else if (format === 'github') {
+          console.log(renderGitHubReport(diffResult));
+        } else if (format === 'sarif') {
+          console.log(renderSarifReport(diffResult));
+        } else {
+          console.log(renderTerminalReport(diffResult, { verbose: options.verbose }));
+        }
+      }
+
+      if (anyErrors) return 1;
+      if (isStrict && anyWarnings) return 1;
+      return 0;
+    }
+  }
+
+  const envFilePath = path.resolve(cwd, options.env || config.envFile);
+  const exampleFilePath = path.resolve(cwd, options.example || config.exampleFile);
 
   // 1. Parse .env if exists
   let envAst: EnvFileAst | null = null;
@@ -74,33 +146,48 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
     customGlobs = config.customGlobs;
   }
 
-
   const scanResult = await scanCodebase({
     cwd,
     customGlobs,
     ignoredKeys: config.ignoredKeys,
     includeSystemVars: config.includeSystemVars,
     ignoreGlobs: config.ignoreGlobs,
+    paranoid: isParanoid,
     staged: !!options.staged
   });
 
+  // 4. Git history scanning if requested
+  if (shouldScanHistory && isGitRepository(cwd)) {
+    const historySecrets = scanGitHistory({
+      cwd,
+      detectOptions: {
+        ...config.secretDetection,
+        paranoid: isParanoid
+      }
+    });
+    scanResult.secretLeaks.push(...historySecrets);
+  }
 
-  // 4. Compute full diff & leaks
+  // 5. Compute full diff & leaks
   const diffResult = computeEnvDiff({
     envAst,
     exampleAst,
     codeKeys: scanResult.uniqueKeys,
     codeReferences: scanResult.keyLocations,
     sourceSecrets: scanResult.secretLeaks,
-    secretDetection: config.secretDetection
+    secretDetection: {
+      ...config.secretDetection,
+      paranoid: isParanoid
+    }
   });
 
-
-  // 5. Render report
+  // 6. Render report
   if (format === 'json') {
     console.log(renderJsonReport(diffResult));
   } else if (format === 'github') {
     console.log(renderGitHubReport(diffResult));
+  } else if (format === 'sarif') {
+    console.log(renderSarifReport(diffResult));
   } else {
     console.log(renderTerminalReport(diffResult, { verbose: options.verbose }));
   }

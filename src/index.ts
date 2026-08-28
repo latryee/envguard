@@ -11,11 +11,20 @@ export type {
   ParseOptions
 } from './core/parser/types.js';
 
-// Scanner
-export { scanCodebase } from './core/scanner/code-scanner.js';
+// Scanner & AST
+export { scanCodebase, stripComments } from './core/scanner/code-scanner.js';
 export type { ScanOptions, ScanResult } from './core/scanner/code-scanner.js';
+export { scanTsAst } from './core/scanner/ts-ast-scanner.js';
+export type { TsAstScanOptions } from './core/scanner/ts-ast-scanner.js';
 export { LANGUAGE_PATTERNS, SYSTEM_ENV_VARS } from './core/scanner/patterns.js';
 export type { CodeReference, LanguagePattern } from './core/scanner/patterns.js';
+export {
+  loadIgnorePatterns,
+  loadEnvguardIgnore,
+  parseInlineDirectives,
+  isFindingIgnored
+} from './core/scanner/ignore.js';
+export type { EnvguardIgnoreConfig, FileInlineIgnores } from './core/scanner/ignore.js';
 
 // Secrets & Entropy
 export { calculateShannonEntropy, isHighEntropyString } from './core/secrets/entropy.js';
@@ -26,7 +35,7 @@ export type { SecretRule } from './core/secrets/rules.js';
 export { isSafePlaceholder, SAFE_PLACEHOLDERS } from './core/secrets/whitelist.js';
 
 // Type Validation & Schema
-export { inferType } from './core/validator/type-inference.js';
+export { inferType, isCronExpression } from './core/validator/type-inference.js';
 export { createSchemaFromAnnotations } from './core/validator/schema.js';
 export type { EnvFieldSchema } from './core/validator/schema.js';
 export { validateFieldValue } from './core/validator/type-validator.js';
@@ -45,11 +54,21 @@ export { generateSafePlaceholder } from './core/sync/masker.js';
 export { generateTypeDeclarations } from './core/generator/types-generator.js';
 export type { GenerateTypesOptions, GenerateTypesResult } from './core/generator/types-generator.js';
 
-// Git & Hooks
-export { isGitRepository, getGitRoot, getStagedFiles, getStagedFileContent } from './core/git/git-utils.js';
+// Git & Hooks & History
+export {
+  isGitRepository,
+  getGitRoot,
+  getStagedFiles,
+  getStagedFileContent,
+  scanGitHistory
+} from './core/git/git-utils.js';
+export type { ScanGitHistoryOptions } from './core/git/git-utils.js';
 export { installPreCommitHook } from './core/git/hooks.js';
 export type { HookInstallResult } from './core/git/hooks.js';
 
+// Monorepo & Workspaces
+export { findWorkspaces } from './core/monorepo/workspaces.js';
+export type { WorkspacePackage } from './core/monorepo/workspaces.js';
 
 // Configuration
 export { loadConfig } from './core/config/config-loader.js';
@@ -61,3 +80,4 @@ export type { EnvGuardConfig, SecretDetectionConfig } from './core/config/defaul
 export { renderTerminalReport } from './reporters/terminal-reporter.js';
 export { renderJsonReport } from './reporters/json-reporter.js';
 export { renderGitHubReport } from './reporters/github-reporter.js';
+export { renderSarifReport } from './reporters/sarif-reporter.js';

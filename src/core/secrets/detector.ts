@@ -14,6 +14,11 @@ export interface SecretFinding {
   line?: number;
   snippetMasked: string;
   entropy?: number;
+  confidence: number; // 0 - 100
+  confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+  commitHash?: string;
+  author?: string;
+  date?: string;
 }
 
 export interface DetectSecretsOptions {
@@ -21,6 +26,11 @@ export interface DetectSecretsOptions {
   allowHighEntropy?: boolean;
   entropyThreshold?: number;
   minLength?: number;
+  paranoid?: boolean;
+  minConfidence?: number;
+  commitHash?: string;
+  author?: string;
+  date?: string;
 }
 
 /**
@@ -33,6 +43,65 @@ export function maskSecret(secret: string): string {
     return `${secret.slice(0, 2)}...${secret.slice(-2)}`;
   }
   return `${secret.slice(0, 4)}...${secret.slice(-4)}`;
+}
+
+function calculateFindingConfidence(
+  baseScore: number,
+  entropy: number,
+  key?: string,
+  ruleId?: string
+): { confidence: number; confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' } {
+  let score = baseScore;
+
+  const upperKey = (key || '').toUpperCase();
+  const isSecretKey =
+    upperKey.includes('SECRET') ||
+    upperKey.includes('KEY') ||
+    upperKey.includes('TOKEN') ||
+    upperKey.includes('AUTH') ||
+    upperKey.includes('PASS') ||
+    upperKey.includes('PRIVATE') ||
+    upperKey.includes('CREDENTIAL') ||
+    upperKey.includes('API');
+
+  const isNonSecretKey =
+    upperKey.includes('HASH') ||
+    upperKey.includes('NONCE') ||
+    upperKey.includes('ID') ||
+    upperKey.includes('CSS') ||
+    upperKey.includes('CHUNK') ||
+    upperKey.includes('BUILD') ||
+    upperKey.includes('ASSET') ||
+    upperKey.includes('COLOR');
+
+  if (ruleId === 'high-entropy-secret') {
+    if (isSecretKey) {
+      score += 25;
+    } else if (isNonSecretKey) {
+      score -= 20;
+    }
+    if (entropy >= 4.8) {
+      score += 10;
+    }
+  } else {
+    if (isSecretKey) {
+      score += 5;
+    }
+    if (entropy >= 4.5) {
+      score += 5;
+    }
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  let confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
+  if (score >= 80) {
+    confidenceLevel = 'HIGH';
+  } else if (score >= 50) {
+    confidenceLevel = 'MEDIUM';
+  }
+
+  return { confidence: score, confidenceLevel };
 }
 
 /**
@@ -56,6 +125,14 @@ export function detectSecretsInValue(
     if (match) {
       const matchedStr = match[0];
       if (!isSafePlaceholder(matchedStr)) {
+        const entropy = Number(calculateShannonEntropy(matchedStr).toFixed(2));
+        const { confidence, confidenceLevel } = calculateFindingConfidence(
+          rule.confidenceBase ?? 90,
+          entropy,
+          key,
+          rule.id
+        );
+
         findings.push({
           ruleId: rule.id,
           ruleName: rule.name,
@@ -67,7 +144,12 @@ export function detectSecretsInValue(
           file: options.file,
           line,
           snippetMasked: maskSecret(matchedStr),
-          entropy: Number(calculateShannonEntropy(matchedStr).toFixed(2))
+          entropy,
+          confidence,
+          confidenceLevel,
+          commitHash: options.commitHash,
+          author: options.author,
+          date: options.date
         });
       }
     }
@@ -79,6 +161,13 @@ export function detectSecretsInValue(
     const minLength = options.minLength ?? 20;
     if (isHighEntropyString(value, threshold, minLength)) {
       const entropy = Number(calculateShannonEntropy(value).toFixed(2));
+      const { confidence, confidenceLevel } = calculateFindingConfidence(
+        55,
+        entropy,
+        key,
+        'high-entropy-secret'
+      );
+
       findings.push({
         ruleId: 'high-entropy-secret',
         ruleName: 'High-Entropy Secret String',
@@ -90,10 +179,19 @@ export function detectSecretsInValue(
         file: options.file,
         line,
         snippetMasked: maskSecret(value),
-        entropy
+        entropy,
+        confidence,
+        confidenceLevel,
+        commitHash: options.commitHash,
+        author: options.author,
+        date: options.date
       });
     }
   }
 
-  return findings;
+  // Filter based on confidence threshold
+  // In standard mode: only HIGH confidence (>= 80)
+  // In paranoid mode: MEDIUM and HIGH confidence (>= 50)
+  const minScore = options.minConfidence ?? (options.paranoid ? 50 : 80);
+  return findings.filter((f) => f.confidence >= minScore);
 }

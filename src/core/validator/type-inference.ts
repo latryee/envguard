@@ -5,6 +5,30 @@ const IPV4_REGEX = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]
 const IPV6_REGEX = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
 const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 const BASE64_REGEX = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+const DURATION_REGEX = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h|d|w|y)$/i;
+const SEMVER_REGEX = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+const HOSTNAME_REGEX = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost$/i;
+const CRON_MACROS = new Set(['@yearly', '@annually', '@monthly', '@weekly', '@daily', '@midnight', '@hourly', '@reboot']);
+
+/**
+ * Checks if a string is a valid standard 5-part cron expression.
+ */
+export function isCronExpression(val: string): boolean {
+  const trimmed = val.trim();
+  if (CRON_MACROS.has(trimmed.toLowerCase())) return true;
+  const parts = trimmed.split(/\s+/);
+  if (parts.length !== 5) return false;
+
+  const [min, hour, dom, mon, dow] = parts;
+  const fieldRegex = /^(\*|\d+(?:-\d+)?(?:\/\d+)?|\d+(?:,\d+)*(?:\/\d+)?|\*\/\d+|[a-zA-Z]{3}(?:-[a-zA-Z]{3})?)$/;
+  return (
+    fieldRegex.test(min) &&
+    fieldRegex.test(hour) &&
+    fieldRegex.test(dom) &&
+    fieldRegex.test(mon) &&
+    fieldRegex.test(dow)
+  );
+}
 
 /**
  * Infers the high-level semantic type of a string value.
@@ -27,11 +51,34 @@ export function inferType(value: string, key?: string): InferredType {
     return 'boolean';
   }
 
+  // Duration
+  if (DURATION_REGEX.test(trimmed)) {
+    return 'duration';
+  }
+
+  // Cron Expression
+  if (isCronExpression(trimmed) && (trimmed.includes('*') || trimmed.startsWith('@'))) {
+    return 'cron';
+  }
+
+  // Semver (e.g. 1.0.0, v2.1.3)
+  if (SEMVER_REGEX.test(trimmed) && (trimmed.includes('.') || trimmed.startsWith('v'))) {
+    return 'semver';
+  }
+
   // Integer / Number / Port
   if (/^-?\d+$/.test(trimmed)) {
     const num = Number(trimmed);
     if (Number.isInteger(num)) {
-      if (num >= 1 && num <= 65535 && (key?.toLowerCase().includes('port') || num === 3000 || num === 8080 || num === 5000 || num === 8000)) {
+      if (
+        num >= 1 &&
+        num <= 65535 &&
+        (key?.toLowerCase().includes('port') ||
+          num === 3000 ||
+          num === 8080 ||
+          num === 5000 ||
+          num === 8000)
+      ) {
         return 'port';
       }
       return 'integer';
@@ -44,7 +91,9 @@ export function inferType(value: string, key?: string): InferredType {
 
   // URLs (HTTP, WS, Database URIs)
   if (
-    /^(https?|wss?|postgres|postgresql|mongodb(?:\+srv)?|redis|rediss|mysql|sqlite|grpc):\/\//i.test(trimmed) &&
+    /^(https?|wss?|postgres|postgresql|mongodb(?:\+srv)?|redis|rediss|mysql|sqlite|grpc):\/\//i.test(
+      trimmed
+    ) &&
     !trimmed.includes(' ') &&
     !trimmed.includes('\n')
   ) {
@@ -61,8 +110,16 @@ export function inferType(value: string, key?: string): InferredType {
     return 'ip';
   }
 
+  // Hostname (e.g. api.example.com, localhost)
+  if (HOSTNAME_REGEX.test(trimmed) && !trimmed.includes('://')) {
+    return 'hostname';
+  }
+
   // JSON Object or Array
-  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+  if (
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'))
+  ) {
     try {
       JSON.parse(trimmed);
       return 'json';
@@ -77,7 +134,11 @@ export function inferType(value: string, key?: string): InferredType {
   }
 
   // Base64 (only if long enough and matches)
-  if (trimmed.length >= 24 && BASE64_REGEX.test(trimmed) && (trimmed.endsWith('=') || /^[A-Za-z0-9+/]+$/.test(trimmed))) {
+  if (
+    trimmed.length >= 24 &&
+    BASE64_REGEX.test(trimmed) &&
+    (trimmed.endsWith('=') || /^[A-Za-z0-9+/]+$/.test(trimmed))
+  ) {
     return 'base64';
   }
 

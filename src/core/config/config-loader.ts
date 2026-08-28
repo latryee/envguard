@@ -21,7 +21,15 @@ function mergeConfig(
     allowHighEntropy:
       override.secretDetection?.allowHighEntropy ??
       override.allowHighEntropy ??
-      base.secretDetection.allowHighEntropy
+      base.secretDetection.allowHighEntropy,
+    paranoid:
+      override.secretDetection?.paranoid ??
+      override.paranoid ??
+      base.secretDetection.paranoid,
+    minConfidence:
+      override.secretDetection?.minConfidence ??
+      override.minConfidence ??
+      base.secretDetection.minConfidence
   };
 
   return {
@@ -29,6 +37,8 @@ function mergeConfig(
     ...override,
     entropyThreshold: secretDetection.entropyThreshold,
     allowHighEntropy: secretDetection.allowHighEntropy,
+    paranoid: secretDetection.paranoid,
+    minConfidence: secretDetection.minConfidence,
     secretDetection
   };
 }
@@ -80,4 +90,3 @@ export function loadConfig(cwd = process.cwd()): LoadedConfig {
 
   return config;
 }
-

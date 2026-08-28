@@ -2,6 +2,8 @@ export interface SecretDetectionConfig {
   entropyThreshold?: number;
   minLength?: number;
   allowHighEntropy?: boolean;
+  paranoid?: boolean;
+  minConfidence?: number;
 }
 
 export interface EnvGuardConfig {
@@ -11,6 +13,10 @@ export interface EnvGuardConfig {
   strict?: boolean;
   allowHighEntropy?: boolean;
   entropyThreshold?: number;
+  paranoid?: boolean;
+  minConfidence?: number;
+  workspaces?: boolean;
+  scanHistory?: boolean;
   secretDetection?: SecretDetectionConfig;
   ignoredKeys?: string[];
   includeSystemVars?: boolean;
@@ -27,10 +33,16 @@ export const DEFAULT_CONFIG: Required<Omit<EnvGuardConfig, 'secretDetection'>> &
   strict: false,
   allowHighEntropy: false,
   entropyThreshold: 4.3,
+  paranoid: false,
+  minConfidence: 80,
+  workspaces: false,
+  scanHistory: false,
   secretDetection: {
     entropyThreshold: 4.3,
     minLength: 20,
-    allowHighEntropy: false
+    allowHighEntropy: false,
+    paranoid: false,
+    minConfidence: 80
   },
   ignoredKeys: [],
   includeSystemVars: false,

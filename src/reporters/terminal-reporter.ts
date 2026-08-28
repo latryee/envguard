@@ -18,7 +18,15 @@ export function renderTerminalReport(diff: DiffResult, options: TerminalReporter
     for (const leak of diff.secretLeaks) {
       const loc = leak.file ? `${leak.file}${leak.line ? `:${leak.line}` : ''}` : 'unknown';
       const keyName = leak.variableKey ? ` in variable ${pc.bold(leak.variableKey)}` : '';
-      addLine(`  ${pc.red('●')} ${pc.bold(leak.ruleName)}${keyName} ${pc.dim(`at ${loc}`)}`);
+      const commitInfo = leak.commitHash
+        ? pc.magenta(` [commit ${leak.commitHash}${leak.author ? ` by ${leak.author}` : ''}]`)
+        : '';
+      const confidenceBadge =
+        leak.confidenceLevel === 'HIGH'
+          ? pc.red(`[CONFIDENCE: ${leak.confidence}%]`)
+          : pc.yellow(`[CONFIDENCE: ${leak.confidence}%]`);
+
+      addLine(`  ${pc.red('●')} ${pc.bold(leak.ruleName)}${keyName} ${confidenceBadge} ${pc.dim(`at ${loc}`)}${commitInfo}`);
       addLine(`    ${pc.dim('Pattern:')} ${leak.description}`);
       addLine(`    ${pc.dim('Masked:')}  ${pc.yellow(leak.snippetMasked)} ${leak.entropy ? pc.dim(`(entropy: ${leak.entropy})`) : ''}`);
       addLine(`    ${pc.dim('Fix:')}     ${pc.green(leak.remediation)}`);

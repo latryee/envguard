@@ -1,5 +1,5 @@
 import { EnvFieldSchema } from './schema.js';
-import { inferType } from './type-inference.js';
+import { inferType, isCronExpression } from './type-inference.js';
 
 export interface ValidationError {
   key: string;
@@ -9,6 +9,10 @@ export interface ValidationError {
   message: string;
   line?: number;
 }
+
+const DURATION_REGEX = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h|d|w|y)$/i;
+const SEMVER_REGEX = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+const HOSTNAME_REGEX = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost$/i;
 
 /**
  * Validates a value against an expected EnvFieldSchema.
@@ -101,6 +105,62 @@ export function validateFieldValue(
       break;
     }
 
+    case 'duration': {
+      if (!DURATION_REGEX.test(trimmed)) {
+        return {
+          key: schema.key,
+          value: trimmed,
+          expectedType: 'duration (e.g. 30s, 5m, 1h, 500ms)',
+          actualType: actualInferred,
+          message: `Expected duration string (e.g. 30s, 5m, 1h, 500ms), got "${trimmed}".`,
+          line
+        };
+      }
+      break;
+    }
+
+    case 'cron': {
+      if (!isCronExpression(trimmed)) {
+        return {
+          key: schema.key,
+          value: trimmed,
+          expectedType: 'cron expression (e.g. 0 0 * * * or @daily)',
+          actualType: actualInferred,
+          message: `Expected valid 5-part cron expression or macro (e.g. 0 0 * * * or @daily), got "${trimmed}".`,
+          line
+        };
+      }
+      break;
+    }
+
+    case 'semver': {
+      if (!SEMVER_REGEX.test(trimmed)) {
+        return {
+          key: schema.key,
+          value: trimmed,
+          expectedType: 'semver (e.g. 1.0.0 or v2.1.3)',
+          actualType: actualInferred,
+          message: `Expected semantic version format (e.g. 1.0.0 or v2.1.3), got "${trimmed}".`,
+          line
+        };
+      }
+      break;
+    }
+
+    case 'hostname': {
+      if (!HOSTNAME_REGEX.test(trimmed) || trimmed.includes('://') || trimmed.includes('/')) {
+        return {
+          key: schema.key,
+          value: trimmed,
+          expectedType: 'hostname (e.g. api.example.com or localhost)',
+          actualType: actualInferred,
+          message: `Expected valid hostname (e.g. api.example.com or localhost), got "${trimmed}".`,
+          line
+        };
+      }
+      break;
+    }
+
     case 'url':
     case 'uri': {
       let isValidUrl = false;
@@ -112,7 +172,11 @@ export function validateFieldValue(
           } catch {
             isValidUrl = false;
           }
-        } else if (/^(postgres|postgresql|mongodb(?:\+srv)?|redis|rediss|mysql|sqlite|grpc):\/\/.+$/i.test(trimmed)) {
+        } else if (
+          /^(postgres|postgresql|mongodb(?:\+srv)?|redis|rediss|mysql|sqlite|grpc):\/\/.+$/i.test(
+            trimmed
+          )
+        ) {
           isValidUrl = true;
         }
       }
@@ -202,23 +266,24 @@ export function validateFieldValue(
       break;
     }
 
+    case 'regex':
     default: {
-      // Custom pattern check if specified
-      if (schema.pattern) {
+      const patternToTest = schema.pattern;
+      if (patternToTest) {
         try {
-          const regex = new RegExp(schema.pattern);
+          const regex = new RegExp(patternToTest);
           if (!regex.test(trimmed)) {
             return {
               key: schema.key,
               value: trimmed,
-              expectedType: `pattern(${schema.pattern})`,
+              expectedType: `pattern(${patternToTest})`,
               actualType: trimmed,
-              message: `Value does not match required regex pattern "${schema.pattern}".`,
+              message: `Value does not match required regex pattern "${patternToTest}".`,
               line
             };
           }
         } catch {
-          // invalid regex
+          // invalid regex pattern
         }
       }
       break;

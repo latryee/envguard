@@ -30,7 +30,11 @@ function mapToTsType(inferred: InferredType | string, enumValues?: string[]): st
     case 'number':
     case 'integer':
     case 'float':
-      return '`${number}` | string'; // In Node.js process.env values are strings at runtime
+      return '`${number}` | string';
+    case 'duration':
+      return "`${number}${'ms' | 's' | 'm' | 'h' | 'd' | 'w' | 'y'}` | string";
+    case 'semver':
+      return '`${number}.${number}.${number}` | string';
     case 'boolean':
     case 'bool':
       return "'true' | 'false' | '1' | '0'";

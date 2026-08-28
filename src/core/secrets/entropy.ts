@@ -29,7 +29,6 @@ export function calculateShannonEntropy(str: string): number {
 export function isHighEntropyString(str: string, threshold = 4.3, minLength = 20): boolean {
   if (!str || str.length < minLength) return false;
 
-  // Filter out URLs, obvious repetitive sequences, and common placeholders
   const clean = str.trim();
   if (clean.includes(' ') || clean.includes('\n')) return false;
 
@@ -38,8 +37,27 @@ export function isHighEntropyString(str: string, threshold = 4.3, minLength = 20
     return false;
   }
 
-  // Filter out standard UUIDs
-  if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clean)) {
+  // Filter out data URIs (e.g. data:image/png;base64,...)
+  if (/^data:[a-zA-Z0-9/+-]+;base64,/i.test(clean)) {
+    return false;
+  }
+
+  // Filter out standard UUIDs and urn:uuid:...
+  if (
+    /^(?:urn:uuid:)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i.test(
+      clean
+    )
+  ) {
+    return false;
+  }
+
+  // Filter out pure git/commit SHA1 or SHA256 hashes if they only contain lowercase hex
+  if (/^[0-9a-f]{40}$/.test(clean) || /^[0-9a-f]{64}$/.test(clean)) {
+    return false;
+  }
+
+  // Filter out webpack / build asset chunk filenames
+  if (/\b(?:chunk|bundle|vendor|app|main)[-._][0-9a-fA-F]{8,32}\.(?:js|css|map)$/i.test(clean)) {
     return false;
   }
 

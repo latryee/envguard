@@ -9,10 +9,14 @@ import {
 import {
   DEFAULT_IGNORED_DIRS,
   DEFAULT_IGNORED_EXTENSIONS,
-  loadIgnorePatterns
+  loadIgnorePatterns,
+  loadEnvguardIgnore,
+  parseInlineDirectives,
+  isFindingIgnored
 } from './ignore.js';
 import { getStagedFileContent } from '../git/git-utils.js';
 import { SecretFinding, detectSecretsInValue } from '../secrets/detector.js';
+import { scanTsAst } from './ts-ast-scanner.js';
 
 export interface ScanOptions {
   cwd?: string;
@@ -21,6 +25,10 @@ export interface ScanOptions {
   customGlobs?: string[];
   ignoreGlobs?: string[];
   staged?: boolean;
+  paranoid?: boolean;
+  minConfidence?: number;
+  entropyThreshold?: number;
+  minLength?: number;
 }
 
 export interface ScanResult {
@@ -197,16 +205,26 @@ export function stripComments(content: string, language: CodeReference['language
     while (i < len) {
       const char = chars[i];
 
-      // Triple quoted strings in Python
+      // Triple quoted strings / docstrings in Python
       if (language === 'python') {
         const triple = chars.slice(i, i + 3).join('');
         if (triple === '"""' || triple === "'''") {
+          chars[i] = ' ';
+          chars[i + 1] = ' ';
+          chars[i + 2] = ' ';
           i += 3;
           while (i < len && chars.slice(i, i + 3).join('') !== triple) {
-            if (chars[i] === '\\') i++;
+            if (chars[i] !== '\n' && chars[i] !== '\r') {
+              chars[i] = ' ';
+            }
             i++;
           }
-          if (i < len) i += 3;
+          if (i < len) {
+            chars[i] = ' ';
+            chars[i + 1] = ' ';
+            chars[i + 2] = ' ';
+            i += 3;
+          }
           continue;
         }
       }
@@ -251,30 +269,13 @@ export function stripComments(content: string, language: CodeReference['language
   return chars.join('');
 }
 
-function getLineAndColumn(
-  content: string,
-  charIndex: number,
-  originalLines: string[]
-): { line: number; column: number; snippet: string } {
-  let line = 1;
-  let lastNewline = -1;
-  for (let i = 0; i < charIndex && i < content.length; i++) {
-    if (content[i] === '\n') {
-      line++;
-      lastNewline = i;
-    }
-  }
-  const column = charIndex - lastNewline;
-  const snippet = originalLines[line - 1] ? originalLines[line - 1].trim() : '';
-  return { line, column, snippet };
-}
-
 /**
  * Scans code files across supported programming languages to find all environment variable usages.
  */
 export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResult> {
   const cwd = options.cwd ? path.resolve(options.cwd) : process.cwd();
-  const ignoredKeys = new Set(options.ignoredKeys || []);
+  const envguardIgnore = loadEnvguardIgnore(cwd);
+  const ignoredKeys = new Set([...(options.ignoredKeys || []), ...envguardIgnore.ignoredKeys]);
   if (!options.includeSystemVars) {
     for (const key of SYSTEM_ENV_VARS) {
       ignoredKeys.add(key);
@@ -291,14 +292,6 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
     ...(options.ignoreGlobs || [])
   ];
 
-  // Collect all supported file extensions
-  const allExtensions = new Set<string>();
-  for (const lang of LANGUAGE_PATTERNS) {
-    for (const ext of lang.extensions) {
-      allExtensions.add(ext);
-    }
-  }
-
   if (options.customGlobs !== undefined && options.customGlobs.length === 0) {
     return {
       references: [],
@@ -311,7 +304,6 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
 
   let files: string[];
   if (options.staged && options.customGlobs && options.customGlobs.length > 0) {
-    // When scanning staged files, resolve paths directly without requiring files to exist on disk
     files = options.customGlobs
       .map((p) => path.resolve(cwd, p))
       .filter((file) => {
@@ -344,12 +336,9 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
   const secretLeaks: SecretFinding[] = [];
   let scannedFilesCount = 0;
 
-  // JS/TS Destructuring Regex (supports single-line and multiline): const { A, B: renamed, C = default } = process.env
-  const jsDestructuringRegex = /(?:(?:const|let|var)\s*\{|(?:\(|^|\s)\{\s*)([\s\S]*?)\}\s*(?::\s*[^=]+)?=\s*(?:process\.env|import\.meta\.env|Bun\.env)\b/g;
-
   for (const file of files) {
     const filename = path.basename(file);
-    const ext = path.extname(file);
+    const ext = path.extname(file).toLowerCase();
 
     // Find matching language pattern
     const matchingLang = LANGUAGE_PATTERNS.find(
@@ -375,18 +364,27 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
 
     const relFilePath = path.relative(cwd, file).replace(/\\/g, '/');
     const lines = content.split(/\r?\n/);
+    const inlineIgnores = parseInlineDirectives(content);
 
-    // 1. Scan all lines in the file for secret leaks
+    // 1. Scan lines for secret leaks
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-      const lineContent = lines[lineIdx];
       const lineNum = lineIdx + 1;
+      const lineContent = lines[lineIdx];
+
       if (lineContent.trim()) {
         const findings = detectSecretsInValue(lineContent, undefined, lineNum, {
           file: relFilePath,
-          allowHighEntropy: true
+          allowHighEntropy: true,
+          paranoid: options.paranoid,
+          minConfidence: options.minConfidence,
+          entropyThreshold: options.entropyThreshold,
+          minLength: options.minLength
         });
-        if (findings.length > 0) {
-          secretLeaks.push(...findings);
+
+        for (const finding of findings) {
+          if (!isFindingIgnored(lineNum, finding.ruleId, finding.variableKey, inlineIgnores, envguardIgnore)) {
+            secretLeaks.push(finding);
+          }
         }
       }
     }
@@ -396,58 +394,38 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
       continue;
     }
 
+    // 2a. For JavaScript / TypeScript, use TypeScript Compiler API AST Scanner
+    if (matchingLang.language === 'typescript') {
+      const tsRefs = scanTsAst({
+        filePath: file,
+        relFilePath,
+        content,
+        ignoredKeys,
+        ignoredLines: inlineIgnores.ignoredLines
+      });
+
+      for (const ref of tsRefs) {
+        if (!isFindingIgnored(ref.line, undefined, ref.key, inlineIgnores, envguardIgnore)) {
+          references.push(ref);
+          uniqueKeys.add(ref.key);
+          const existing = keyLocations.get(ref.key) || [];
+          existing.push(ref);
+          keyLocations.set(ref.key, existing);
+        }
+      }
+      continue;
+    }
+
+    // 2b. For other languages (Python, Go, Rust, PHP, Ruby, Docker), use tokenized regex scanner
     const strippedContent = stripComments(content, matchingLang.language);
     const strippedLines = strippedContent.split(/\r?\n/);
 
-    // Handle JS/TS destructuring (both single-line and multi-line)
-    if (matchingLang.language === 'typescript') {
-      jsDestructuringRegex.lastIndex = 0;
-      let dMatch: RegExpExecArray | null;
-      while ((dMatch = jsDestructuringRegex.exec(strippedContent)) !== null) {
-        const rawBlock = dMatch[1];
-        const blockStartIndex = dMatch.index + dMatch[0].indexOf(rawBlock);
-        const parts = rawBlock.split(',');
-        let currentOffset = 0;
-
-        for (const rawPart of parts) {
-          const partOffset = rawBlock.indexOf(rawPart, currentOffset);
-          currentOffset = partOffset + rawPart.length;
-
-          const trimmedPart = rawPart.trim();
-          if (!trimmedPart) continue;
-
-          // Handle rename (A: b) or default assignment (A = 'default')
-          const varName = trimmedPart.split(/[:=]/)[0].trim();
-          if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(varName) && !ignoredKeys.has(varName)) {
-            const varIndexInBlock = partOffset + rawPart.indexOf(varName);
-            const absCharIndex = blockStartIndex + varIndexInBlock;
-            const { line: varLine, column: varCol, snippet } = getLineAndColumn(strippedContent, absCharIndex, lines);
-
-            const ref: CodeReference = {
-              key: varName,
-              file: relFilePath,
-              line: varLine,
-              column: varCol,
-              snippet,
-              language: 'typescript'
-            };
-            references.push(ref);
-            uniqueKeys.add(varName);
-            const existing = keyLocations.get(varName) || [];
-            existing.push(ref);
-            keyLocations.set(varName, existing);
-          }
-        }
-      }
-    }
-
-    // Handle standard property accesses / function calls line by line on stripped content
     for (let lineIdx = 0; lineIdx < strippedLines.length; lineIdx++) {
-      const strippedLine = strippedLines[lineIdx];
       const lineNum = lineIdx + 1;
+      const strippedLine = strippedLines[lineIdx];
       const originalSnippet = lines[lineIdx] ? lines[lineIdx].trim() : '';
 
-      if (!strippedLine.trim()) {
+      if (!strippedLine.trim() || inlineIgnores.ignoredLines.has(lineNum)) {
         continue;
       }
 
@@ -458,6 +436,10 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
         while ((match = regex.exec(strippedLine)) !== null) {
           const varName = match[1];
           if (!varName || ignoredKeys.has(varName)) {
+            continue;
+          }
+
+          if (isFindingIgnored(lineNum, undefined, varName, inlineIgnores, envguardIgnore)) {
             continue;
           }
 
@@ -490,4 +472,3 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
     secretLeaks
   };
 }
-

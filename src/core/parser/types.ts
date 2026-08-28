@@ -11,7 +11,11 @@ export type InferredType =
   | 'enum'
   | 'uuid'
   | 'base64'
-  | 'regex';
+  | 'regex'
+  | 'duration'
+  | 'cron'
+  | 'semver'
+  | 'hostname';
 
 export interface EnvAnnotations {
   type?: InferredType | string;

@@ -1,0 +1,73 @@
+name: 'EnvGuard - Environment & Secret Guard'
+description: 'Zero-config Git secret leaks detector, semantic type validator, and .env.example synchronizer for CI/CD.'
+author: 'latryee'
+branding:
+  icon: 'shield'
+  color: 'green'
+
+inputs:
+  env-file:
+    description: 'Path to the .env file'
+    required: false
+    default: '.env'
+  example-file:
+    description: 'Path to the .env.example template'
+    required: false
+    default: '.env.example'
+  strict:
+    description: 'Fail with exit code 1 on drift warnings'
+    required: false
+    default: 'true'
+  staged:
+    description: 'Only scan Git staged files'
+    required: false
+    default: 'false'
+  paranoid:
+    description: 'Enable paranoid secret detection (lower confidence heuristics)'
+    required: false
+    default: 'false'
+  scan-history:
+    description: 'Scan Git commit history diffs for committed secret leaks'
+    required: false
+    default: 'false'
+  workspaces:
+    description: 'Scan all monorepo workspace packages'
+    required: false
+    default: 'false'
+  format:
+    description: 'Output format: github, sarif, json, terminal'
+    required: false
+    default: 'github'
+  sarif-file:
+    description: 'Path to write SARIF results when format is sarif'
+    required: false
+    default: 'envguard.sarif'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run EnvGuard
+      shell: bash
+      run: |
+        ARGS="--env ${{ inputs.env-file }} --example ${{ inputs.example-file }} --format ${{ inputs.format }}"
+        if [ "${{ inputs.strict }}" = "true" ]; then
+          ARGS="$ARGS --strict"
+        fi
+        if [ "${{ inputs.staged }}" = "true" ]; then
+          ARGS="$ARGS --staged"
+        fi
+        if [ "${{ inputs.paranoid }}" = "true" ]; then
+          ARGS="$ARGS --paranoid"
+        fi
+        if [ "${{ inputs.scan-history }}" = "true" ]; then
+          ARGS="$ARGS --scan-history"
+        fi
+        if [ "${{ inputs.workspaces }}" = "true" ]; then
+          ARGS="$ARGS --workspaces"
+        fi
+
+        if [ "${{ inputs.format }}" = "sarif" ]; then
+          npx @latryee/envguard $ARGS > ${{ inputs.sarif-file }}
+        else
+          npx @latryee/envguard $ARGS
+        fi
