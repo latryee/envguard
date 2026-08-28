@@ -255,6 +255,28 @@ for (const [uri, diagnostics] of lspMap.entries()) {
 
 ---
 
+### 5. Runtime SDK: Zero-Overhead Loader & Schema Enforcement
+
+Replace `dotenv` with `envguard` for zero-overhead loading, variable expansion, and startup type enforcement:
+
+```ts
+import { loadEnv } from '@latryee/envguard';
+
+// Automatically loads .env, expands ${PORT} variables, and validates types against .env.example
+loadEnv({ strict: true });
+```
+
+#### Preload in Node.js Applications:
+```bash
+# CommonJS
+node -r @latryee/envguard/register app.js
+
+# ES Modules
+node --import @latryee/envguard/register app.js
+```
+
+---
+
 ## 📖 CLI Commands Reference
 
 | Command | Description |
