@@ -136,5 +136,43 @@ describe('Git Utilities & Hook Engine', () => {
     const binContent = getStagedFileContent(binFile, tempDir);
     expect(binContent).toBeNull();
   });
+
+  it('detects git repository from deeply nested subdirectories and resolves staged files correctly', async () => {
+    execSync('git init', { cwd: tempDir, stdio: 'ignore' });
+    execSync('git config user.name "Test"', { cwd: tempDir, stdio: 'ignore' });
+    execSync('git config user.email "test@example.com"', { cwd: tempDir, stdio: 'ignore' });
+
+    const nestedDir = path.join(tempDir, 'packages', 'web', 'src');
+    fs.mkdirSync(nestedDir, { recursive: true });
+
+    // isGitRepository should return true from the nested directory
+    expect(isGitRepository(nestedDir)).toBe(true);
+    expect(getGitRoot(nestedDir)).toBe(tempDir);
+
+    // Staging a file inside the nested subdirectory
+    const appFile = path.join(nestedDir, 'app.ts');
+    fs.writeFileSync(appFile, 'const key = process.env.NESTED_APP_KEY;');
+    execSync('git add packages/web/src/app.ts', { cwd: tempDir, stdio: 'ignore' });
+
+    // getStagedFiles called from nestedDir should return the relative path from nestedDir
+    const stagedFromNested = getStagedFiles(nestedDir);
+    expect(stagedFromNested).toContain('app.ts');
+
+    // Run runCheck with --staged from nestedDir
+    const { runCheck } = await import('../src/cli/commands/check.js');
+    const oldCwd = process.cwd();
+    process.chdir(nestedDir);
+
+    try {
+      // With NESTED_APP_KEY undocumented, check should discover it
+      fs.writeFileSync(path.join(nestedDir, '.env'), 'NESTED_APP_KEY=123\n');
+      fs.writeFileSync(path.join(nestedDir, '.env.example'), 'NESTED_APP_KEY=123\n');
+      const exitCode = await runCheck({ staged: true, quiet: true, noBanner: true });
+      expect(exitCode).toBe(0);
+    } finally {
+      process.chdir(oldCwd);
+    }
+  });
 });
+
 

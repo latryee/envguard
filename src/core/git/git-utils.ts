@@ -3,14 +3,12 @@ import path from 'node:path';
 import { execFileSync, execSync } from 'node:child_process';
 
 /**
- * Checks if the given directory is a Git repository root.
+ * Checks if the given directory is within a Git repository.
  */
 export function isGitRepository(cwd = process.cwd()): boolean {
-  if (fs.existsSync(path.join(cwd, '.git'))) {
-    return true;
-  }
-  return false;
+  return getGitRoot(cwd) !== null;
 }
+
 
 /**
  * Gets the root directory of the Git repository.
