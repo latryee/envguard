@@ -9,7 +9,7 @@ describe('TypeScript Type Generator', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-types-'));
+    tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-types-')));
   });
 
   afterEach(() => {

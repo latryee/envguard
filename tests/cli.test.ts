@@ -12,7 +12,7 @@ describe('CLI Commands Integration', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-cli-'));
+    tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-cli-')));
   });
 
   afterEach(() => {

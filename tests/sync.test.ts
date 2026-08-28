@@ -8,7 +8,7 @@ describe('Auto-Sync & Masking Engine', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-sync-'));
+    tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-sync-')));
   });
 
   afterEach(() => {

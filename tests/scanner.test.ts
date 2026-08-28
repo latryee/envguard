@@ -8,7 +8,7 @@ describe('Multi-Language Code Scanner', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-scan-'));
+    tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-scan-')));
   });
 
   afterEach(() => {

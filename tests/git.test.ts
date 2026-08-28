@@ -10,7 +10,7 @@ describe('Git Utilities & Hook Engine', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-git-'));
+    tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-git-')));
   });
 
   afterEach(() => {
@@ -58,7 +58,7 @@ describe('Git Utilities & Hook Engine', () => {
     const res = installPreCommitHook(tempDir);
     expect(res.success).toBe(true);
     expect(res.hookType).toBe('husky');
-    expect(res.hookPath).toBe(path.join(huskyDir, 'pre-commit'));
+    expect(fs.realpathSync(res.hookPath)).toBe(fs.realpathSync(path.join(huskyDir, 'pre-commit')));
 
     const content = fs.readFileSync(res.hookPath, 'utf8');
     expect(content).toContain('envguard check --staged --strict');
