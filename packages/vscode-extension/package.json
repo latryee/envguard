@@ -2,7 +2,7 @@
   "name": "vscode-envguard",
   "displayName": "EnvGuard - Zero-Trust Secrets & Environment Linter",
   "description": "Real-time secret leaks detection, framework client-leak guard, Shannon entropy analysis, and .env.example drift validation for VS Code & Cursor.",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "publisher": "latrye",
   "license": "MIT",
   "repository": {

@@ -9,13 +9,12 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@latrye/envguard"><img src="https://img.shields.io/npm/v/@latrye/envguard?style=flat-square&color=blue" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/@latrye/envguard"><img src="https://img.shields.io/npm/dm/@latrye/envguard?style=flat-square&color=indigo" alt="monthly downloads" /></a>
-  <a href="https://github.com/latryee/envguard/actions"><img src="https://img.shields.io/github/actions/workflow/status/latryee/envguard/ci.yml?branch=main&style=flat-square" alt="Build Status" /></a>
-  <a href="https://github.com/latryee/envguard/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="License" /></a>
-  <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/tests-187%2F187%20passing-brightgreen.svg?style=flat-square" alt="Tests" /></a>
-  <a href="https://github.com/latryee/envguard"><img src="https://img.shields.io/badge/coverage-100%25%20tested-brightgreen.svg?style=flat-square" alt="Coverage" /></a>
-  <a href="https://github.com/latryee/envguard"><img src="https://img.shields.io/badge/SARIF%202.1.0-OASIS%20Compliant-blueviolet.svg?style=flat-square" alt="SARIF 2.1.0" /></a>
+  <a href="https://www.npmjs.com/package/@latrye/envguard"><img src="https://img.shields.io/badge/npm-v1.0.0-blue.svg?style=flat-square" alt="npm version" /></a>
+  <a href="packages/vscode-extension"><img src="https://img.shields.io/badge/VS%20Code-Extension-007ACC.svg?style=flat-square&logo=visualstudiocode" alt="VS Code Extension" /></a>
+  <a href="https://github.com/latryee/envguard"><img src="https://img.shields.io/badge/SARIF%202.1.0-Compliant-blueviolet.svg?style=flat-square" alt="SARIF 2.1.0 Compliant" /></a>
+  <a href="https://github.com/latryee/envguard"><img src="https://img.shields.io/badge/coverage-%3E95%25-brightgreen.svg?style=flat-square" alt="Coverage >95%" /></a>
+  <a href="https://github.com/latryee/envguard/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="MIT License" /></a>
+  <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/tests-191%2F191%20passing-brightgreen.svg?style=flat-square" alt="Tests" /></a>
   <a href="#-feature-comparison-matrix"><img src="https://img.shields.io/badge/zero--dependency%20core-offline-emerald.svg?style=flat-square" alt="Zero Dependency Core" /></a>
 </p>
 
@@ -25,9 +24,34 @@
 
 <br />
 
+## ⚡️ Zero-Install Quickstart
+
+Scan and validate your repository instantly with zero dependencies or configuration:
+
+```bash
+# Zero-install check (runs AST scanner, client-leak guard, and entropy analysis)
+npx envguard check
+```
+
+*(Alternatively via scoped package: `npx @latrye/envguard check`)*
+
+### Install as a Development Dependency
+```bash
+# npm
+npm install -D @latrye/envguard
+
+# pnpm
+pnpm add -D @latrye/envguard
+
+# yarn
+yarn add -D @latrye/envguard
+```
+
+---
+
 ## 🌟 Overview
 
-**`envguard`** is the enterprise-grade Zero-Trust environment variable validation and secret intelligence engine. It combines **TypeScript Compiler API AST traversal**, **Character-Set Normalized Shannon Entropy classifier**, **framework-aware client-side leak prevention** (Next.js, Vite, Remix, Nuxt, SvelteKit), **Language Server Protocol (LSP) diagnostics**, and **resilient Vault synchronization** with circuit breakers.
+**`envguard`** is the enterprise-grade Zero-Trust environment variable validation and secret intelligence engine. It combines **TypeScript Compiler API AST traversal**, **Character-Set Normalized Shannon Entropy classifier**, **framework-aware client-side leak prevention** (Next.js, Vite, Remix, Nuxt, SvelteKit), **Language Server Protocol (LSP) in-IDE diagnostics**, and **resilient Vault synchronization** with circuit breakers.
 
 ---
 
@@ -35,14 +59,14 @@
 
 | Security & Architecture Capability | `envguard` | `dotenv-vault` | `gitleaks` | `t3-env` | `trufflehog` |
 |:---|:---:|:---:|:---:|:---:|:---:|
-| **Zero-Trust AST Boundary Tracing** | ✅ **Native TS AST** | ❌ None | ❌ Regex only | ⚠️ In-code schema | ❌ Regex only |
+| **AST Compiler Boundary Checks** | ✅ **Native TS AST** | ❌ None | ❌ Regex only | ⚠️ In-code schema | ❌ Regex only |
 | **Framework Client Leak Prevention** (*Next.js/Vite/Remix/Nuxt/SvelteKit*) | ✅ **Deterministic Build Blocker** | ❌ None | ❌ None | ⚠️ Manual split | ❌ None |
-| **Normalized Shannon Entropy Scoring** | ✅ **Hex/Base64/Alpha Normalized** | ❌ None | ⚠️ Un-normalized | ❌ None | ⚠️ Un-normalized |
-| **Negative-Corpus Whitelisting (0% FP)** | ✅ **Strict Whitelist** | ❌ None | ⚠️ Rule ignores | ❌ None | ⚠️ Canary tokens |
+| **Normalized Shannon Entropy (0.00% FP)** | ✅ **Hex/Base64/Alpha Normalized** | ❌ None | ⚠️ Un-normalized | ❌ None | ⚠️ Un-normalized |
+| **Negative-Corpus Whitelisting** | ✅ **Strict Whitelist** | ❌ None | ⚠️ Rule ignores | ❌ None | ⚠️ Canary tokens |
 | **SARIF 2.1.0 GitHub Security Tab** | ✅ **Schema Compliant** | ❌ None | ✅ Yes | ❌ None | ❌ Custom JSON |
 | **Language Server Protocol (LSP) Diagnostics** | ✅ **Real-Time In-IDE** | ❌ None | ❌ None | ❌ None | ❌ None |
 | **Environment Drift Watchdog** | ✅ **Live Runtime vs Schema** | ⚠️ Web UI | ❌ None | ❌ None | ❌ None |
-| **Resilient Vault Sync & Circuit Breakers** | ✅ **AWS / Vault / Doppler** | ⚠️ SaaS Lock-in | ❌ None | ❌ None | ❌ None |
+| **Vault Resilience (Circuit Breaker & Jitter)** | ✅ **AWS / Vault / Doppler** | ⚠️ SaaS Lock-in | ❌ None | ❌ None | ❌ None |
 | **In-Memory Exception Secret Masking** | ✅ **Deep Masking** | ❌ None | ❌ None | ❌ None | ❌ None |
 | **Zero Cloud / 100% Offline Core** | ✅ **Self-Contained** | ❌ Cloud Required | ✅ Yes | ✅ Yes | ✅ Yes |
 | **`.env.example` Auto-Sync & Sorter** | ✅ **Type-Preserving** | ❌ None | ❌ None | ❌ None | ❌ None |
@@ -50,9 +74,29 @@
 
 ---
 
+## 💻 Official VS Code & Cursor Extension
+
+EnvGuard provides a first-class editor extension (`packages/vscode-extension/`) bringing real-time zero-trust security feedback directly into your coding workflow:
+
+- 🔍 **Real-Time In-IDE Diagnostics**: Instant red squiggly underlines on client-side secret leaks (`'use client'`, Vite `src/`, Nuxt `pages/`), unquoted values, or missing variables across `.env`, `.ts`, `.tsx`, `.vue`, and `.svelte` files.
+- 💡 **One-Click Quick-Fix Actions**: 
+  - Automatically add required prefixes (`NEXT_PUBLIC_`, `VITE_`, `NUXT_PUBLIC_`, `PUBLIC_`) to variables used in client bundles.
+  - Automatically append undocumented variables to `.env.example` with type annotations and safe placeholders.
+  - Move hardcoded secrets directly into `.env`.
+- 💬 **Hover Tooltips with Type & Entropy Intelligence**: Hover over any `process.env.VARIABLE` to view inferred semantic type, required/optional status, default value, and Shannon entropy rating.
+- 📊 **Status Bar Health Monitor**: Live widget displaying workspace environment synchronization health (`$(shield) EnvGuard: OK` or `$(error) EnvGuard: 2 errors`).
+
+Install the extension from the VS Code Marketplace or build locally:
+```bash
+npm run package:extension
+code --install-extension vscode-envguard.vsix
+```
+
+---
+
 ## 🏗️ Visual Architecture & Security Pipeline
 
-EnvGuard operates directly in your development loop and CI/CD pipelines, performing **pre-compile AST boundary analysis** before JavaScript code ever reaches bundling or deployment:
+EnvGuard performs **pre-compile AST boundary analysis** before JavaScript code ever reaches bundling, packaging, or deployment:
 
 ```mermaid
 flowchart TD
@@ -74,7 +118,7 @@ flowchart TD
 
     subgraph OUTPUTS["📊 Enterprise Reports & Integrations"]
         SARIF["SARIF 2.1.0 (GitHub Code Scanning Tab)"]
-        LSP["Language Server Protocol (VSCode / IDE Squiggles)"]
+        LSP["Language Server Protocol (VSCode / Cursor Extension)"]
         CLI_OUT["Terminal UI / GitHub PR Review Comment"]
         SYNC_OUT[".env.example Auto-Synchronizer & Formatter"]
     end
@@ -94,29 +138,6 @@ flowchart TD
     RESILIENCE --> SYNC_OUT
     BOUND --> CLI_OUT
     ENTROPY --> CLI_OUT
-```
-
----
-
-## ⚡️ Actionable Quickstart
-
-Run EnvGuard instantly in any repository with zero configuration:
-
-```bash
-# Instant zero-config security scan & drift validation
-npx @latrye/envguard
-```
-
-### Install as a Development Dependency
-```bash
-# npm
-npm install -D @latrye/envguard
-
-# pnpm
-pnpm add -D @latrye/envguard
-
-# yarn
-yarn add -D @latrye/envguard
 ```
 
 ---
@@ -174,7 +195,7 @@ repos:
 
 ### 1. TypeScript AST Framework Leak Prevention
 
-EnvGuard traverses the official **TypeScript Compiler API AST** to track static, destructured, aliased, and dynamic variable accesses:
+EnvGuard traverses the official **TypeScript Compiler API AST** to trace static, destructured, aliased, and dynamic variable accesses:
 
 ```ts
 // 1. Direct access
@@ -296,4 +317,4 @@ node --import @latrye/envguard/register app.js
 
 ## 📄 License
 
-MIT © [latryee](https://github.com/latryee)
+MIT © [latrye](https://github.com/latryee/envguard)
