@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -58,4 +58,42 @@ describe('Config Loader', () => {
     expect(config.envFile).toBe('.env.prod');
     expect(config.strict).toBe(true);
   });
+
+  it('warns on malformed JSON in envguard.config.json and falls back to defaults without throwing', () => {
+    const configPath = path.join(tempDir, 'envguard.config.json');
+    fs.writeFileSync(configPath, '{ invalid json content: true, ');
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const config = loadConfig(tempDir);
+      expect(config.envFile).toBe(DEFAULT_CONFIG.envFile);
+      expect(config.strict).toBe(DEFAULT_CONFIG.strict);
+
+      expect(warnSpy).toHaveBeenCalled();
+      const warningMessage = warnSpy.mock.calls[0]?.[0] as string;
+      expect(warningMessage).toContain('envguard.config.json');
+      expect(warningMessage).toContain('Failed to parse');
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('warns on malformed JSON in package.json and falls back to defaults without throwing', () => {
+    const pkgPath = path.join(tempDir, 'package.json');
+    fs.writeFileSync(pkgPath, '{"name": "my-pkg", invalid json');
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const config = loadConfig(tempDir);
+      expect(config.envFile).toBe(DEFAULT_CONFIG.envFile);
+
+      expect(warnSpy).toHaveBeenCalled();
+      const warningMessage = warnSpy.mock.calls[0]?.[0] as string;
+      expect(warningMessage).toContain('package.json');
+      expect(warningMessage).toContain('Failed to parse');
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
 });
+

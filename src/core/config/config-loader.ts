@@ -18,8 +18,10 @@ export function loadConfig(cwd = process.cwd()): Required<EnvGuardConfig> {
         const raw = fs.readFileSync(p, 'utf8');
         const parsed = JSON.parse(raw);
         return Object.assign(config, parsed);
-      } catch {
-        // ignore parse error
+      } catch (err) {
+        console.warn(
+          `[envguard] Warning: Failed to parse configuration file "${p}": ${err instanceof Error ? err.message : String(err)}`
+        );
       }
     }
   }
@@ -33,10 +35,13 @@ export function loadConfig(cwd = process.cwd()): Required<EnvGuardConfig> {
       if (pkg.envguard && typeof pkg.envguard === 'object') {
         return Object.assign(config, pkg.envguard);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn(
+        `[envguard] Warning: Failed to parse configuration file "${pkgPath}": ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   }
 
   return config;
 }
+
