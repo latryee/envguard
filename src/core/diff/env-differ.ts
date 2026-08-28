@@ -30,6 +30,7 @@ export interface DiffOptions {
   exampleAst?: EnvFileAst | null;
   codeKeys?: Set<string>;
   codeReferences?: Map<string, CodeReference[]>;
+  sourceSecrets?: SecretFinding[];
 }
 
 /**
@@ -48,7 +49,7 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
   const secretLeaks: SecretFinding[] = [];
   const unusedInEnv: DiffResult['unusedInEnv'] = [];
 
-  // 1. Check for secret leaks in .env.example (CRITICAL: must never contain real secrets)
+  // 1a. Check for secret leaks in .env.example (CRITICAL: must never contain real secrets)
   if (options.exampleAst) {
     for (const [key, envVar] of exampleVars.entries()) {
       const findings = detectSecretsInValue(envVar.value, key, envVar.line, {
@@ -57,6 +58,22 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
       secretLeaks.push(...findings);
     }
   }
+
+  // 1b. Check for secret leaks in .env (CRITICAL: real secrets in .env)
+  if (options.envAst) {
+    for (const [key, envVar] of envVars.entries()) {
+      const findings = detectSecretsInValue(envVar.value, key, envVar.line, {
+        file: options.envAst.filePath || '.env'
+      });
+      secretLeaks.push(...findings);
+    }
+  }
+
+  // 1c. Merge source code secret leaks
+  if (options.sourceSecrets && options.sourceSecrets.length > 0) {
+    secretLeaks.push(...options.sourceSecrets);
+  }
+
 
   // 2. Check for missing in .env
   // Keys in .env.example that are missing in .env

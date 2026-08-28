@@ -87,8 +87,10 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
     envAst,
     exampleAst,
     codeKeys: scanResult.uniqueKeys,
-    codeReferences: scanResult.keyLocations
+    codeReferences: scanResult.keyLocations,
+    sourceSecrets: scanResult.secretLeaks
   });
+
 
   // 5. Render report
   if (format === 'json') {

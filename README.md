@@ -53,7 +53,8 @@ Managing environment variables in modern software stacks typically involves trad
 When developers collaborate or clone a repository:
 1. **`.env.example` is frequently outdated:** Variables added over months remain undocumented, causing broken local onboarding and missing runtime configs.
 2. **Type mismatches fail at runtime:** `PORT` is entered as text or out of range (1–65535), boolean flags are misspelled, or database connection strings are malformed.
-3. **Accidental secret leaks:** Real API keys (OpenAI, Anthropic, Stripe, AWS, GitHub PATs) accidentally get committed to `.env.example` or Git staged files.
+3. **Accidental secret leaks:** Real API keys (OpenAI, Anthropic, Stripe, AWS, GitHub PATs, private keys) accidentally get committed directly inside `.env`, `.env.example`, codebase source files, or Git staged files.
+
 
 ---
 

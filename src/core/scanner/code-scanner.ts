@@ -12,6 +12,7 @@ import {
   loadIgnorePatterns
 } from './ignore.js';
 import { getStagedFileContent } from '../git/git-utils.js';
+import { SecretFinding, detectSecretsInValue } from '../secrets/detector.js';
 
 export interface ScanOptions {
   cwd?: string;
@@ -27,6 +28,7 @@ export interface ScanResult {
   uniqueKeys: Set<string>;
   keyLocations: Map<string, CodeReference[]>;
   scannedFilesCount: number;
+  secretLeaks: SecretFinding[];
 }
 
 /**
@@ -64,7 +66,8 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
       references: [],
       uniqueKeys: new Set(),
       keyLocations: new Map(),
-      scannedFilesCount: 0
+      scannedFilesCount: 0,
+      secretLeaks: []
     };
   }
 
@@ -100,6 +103,7 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
   const references: CodeReference[] = [];
   const uniqueKeys = new Set<string>();
   const keyLocations = new Map<string, CodeReference[]>();
+  const secretLeaks: SecretFinding[] = [];
   let scannedFilesCount = 0;
 
   // JS/TS Destructuring Regex: const { A, B: renamed, C = default } = process.env
@@ -113,12 +117,6 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
     const matchingLang = LANGUAGE_PATTERNS.find(
       (p) => p.extensions.includes(ext) || p.extensions.includes(filename)
     );
-
-    if (!matchingLang) {
-      continue;
-    }
-
-    scannedFilesCount++;
 
     let content: string;
     if (options.staged) {
@@ -135,8 +133,30 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
       }
     }
 
+    scannedFilesCount++;
 
+    const relFilePath = path.relative(cwd, file).replace(/\\/g, '/');
     const lines = content.split(/\r?\n/);
+
+    // 1. Scan all lines in the file for secret leaks
+    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+      const lineContent = lines[lineIdx];
+      const lineNum = lineIdx + 1;
+      if (lineContent.trim()) {
+        const findings = detectSecretsInValue(lineContent, undefined, lineNum, {
+          file: relFilePath,
+          allowHighEntropy: true
+        });
+        if (findings.length > 0) {
+          secretLeaks.push(...findings);
+        }
+      }
+    }
+
+    // 2. Scan for language-specific environment variable references
+    if (!matchingLang) {
+      continue;
+    }
 
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const lineContent = lines[lineIdx];
@@ -222,6 +242,8 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
     references,
     uniqueKeys,
     keyLocations,
-    scannedFilesCount
+    scannedFilesCount,
+    secretLeaks
   };
 }
+

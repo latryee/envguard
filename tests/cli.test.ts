@@ -153,4 +153,43 @@ describe('CLI Commands Integration', () => {
       process.chdir(oldCwd);
     }
   });
+
+  it('fails check when a real secret is hardcoded in a source file', async () => {
+    fs.writeFileSync(path.join(tempDir, '.env'), 'PORT=3000\n');
+    fs.writeFileSync(path.join(tempDir, '.env.example'), 'PORT=3000\n');
+
+    const claudeSecret = ['sk-ant-', 'api03-abcdefghijklmnopqrstuvwxyz1234567890'].join('');
+    fs.writeFileSync(
+      path.join(tempDir, 'service.ts'),
+      `export const key = "${claudeSecret}";\nconst port = process.env.PORT;\n`
+    );
+
+    const oldCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      const checkCode = await runCheck({ quiet: true, noBanner: true });
+      expect(checkCode).toBe(1);
+    } finally {
+      process.chdir(oldCwd);
+    }
+  });
+
+  it('fails check when a real secret is present in .env', async () => {
+    const fakeKey = ['sk-proj-', 'aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890abcdef'].join('');
+    fs.writeFileSync(path.join(tempDir, '.env'), `PORT=3000\nOPENAI_KEY=${fakeKey}\n`);
+    fs.writeFileSync(path.join(tempDir, '.env.example'), 'PORT=3000\nOPENAI_KEY=your_key_here\n');
+    fs.writeFileSync(path.join(tempDir, 'app.js'), 'const port = process.env.PORT; const key = process.env.OPENAI_KEY;');
+
+    const oldCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      const checkCode = await runCheck({ quiet: true, noBanner: true });
+      expect(checkCode).toBe(1);
+    } finally {
+      process.chdir(oldCwd);
+    }
+  });
 });
+

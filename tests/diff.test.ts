@@ -66,18 +66,31 @@ STRIPE_KEY=${fakeKey}
     expect(diff.hasErrors).toBe(true);
   });
 
-  it('detects stale variables in .env.example not present in code or .env', () => {
-    const exampleRaw = `PORT=3000\nDEAD_VARIABLE=123`;
-    const envRaw = `PORT=3000`;
-    const codeKeys = new Set(['PORT']);
+  it('detects real secret leaks in .env and sourceSecrets in DiffResult', () => {
+    const fakeKey = ['sk-proj-', 'aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890abcdef'].join('');
+    const envRaw = `PORT=3000\nOPENAI_KEY=${fakeKey}\n`;
 
     const diff = computeEnvDiff({
-      envAst: parseEnv(envRaw),
-      exampleAst: parseEnv(exampleRaw),
-      codeKeys
+      envAst: parseEnv(envRaw, { filePath: '.env' }),
+      sourceSecrets: [
+        {
+          ruleId: 'anthropic-api-key',
+          ruleName: 'Anthropic Claude API Key',
+          category: 'ai',
+          severity: 'critical',
+          description: 'Exposed Anthropic Claude API Key.',
+          remediation: 'Rotate your key on Anthropic Console.',
+          file: 'src/app.ts',
+          line: 12,
+          snippetMasked: 'sk-a...7890'
+        }
+      ]
     });
 
-    expect(diff.staleInExample.length).toBe(1);
-    expect(diff.staleInExample[0].key).toBe('DEAD_VARIABLE');
+    expect(diff.secretLeaks.length).toBe(2);
+    expect(diff.secretLeaks.some((s) => s.ruleId === 'openai-api-key' && s.file === '.env')).toBe(true);
+    expect(diff.secretLeaks.some((s) => s.ruleId === 'anthropic-api-key' && s.file === 'src/app.ts')).toBe(true);
+    expect(diff.hasErrors).toBe(true);
   });
 });
+

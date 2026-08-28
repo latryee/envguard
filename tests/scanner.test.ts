@@ -172,5 +172,36 @@ const active = process.env.ACTIVE_KEY;
 
     expect(deletedOnDiskResult.uniqueKeys.has('STAGED_API_KEY')).toBe(true);
   });
+
+  it('detects hardcoded secrets in source files across code and comments', async () => {
+    const srcDir = path.join(tempDir, 'src');
+    fs.mkdirSync(srcDir, { recursive: true });
+
+    const claudeSecret = ['sk-ant-', 'api03-abcdefghijklmnopqrstuvwxyz1234567890'].join('');
+    fs.writeFileSync(
+      path.join(srcDir, 'client.ts'),
+      `export const client = new Anthropic({ apiKey: '${claudeSecret}' });\n`
+    );
+
+    const awsKey = ['AKIA', 'IOSFODNN7EXAMPLE'].join('');
+    fs.writeFileSync(
+      path.join(srcDir, 'config.js'),
+      `// Deprecated key: ${awsKey}\nconst region = 'us-east-1';\n`
+    );
+
+    const result = await scanCodebase({ cwd: tempDir });
+    expect(result.secretLeaks.length).toBe(2);
+
+    const antLeak = result.secretLeaks.find((l) => l.ruleId === 'anthropic-api-key');
+    expect(antLeak).toBeDefined();
+    expect(antLeak?.file).toBe('src/client.ts');
+    expect(antLeak?.line).toBe(1);
+
+    const awsLeak = result.secretLeaks.find((l) => l.ruleId === 'aws-access-key');
+    expect(awsLeak).toBeDefined();
+    expect(awsLeak?.file).toBe('src/config.js');
+    expect(awsLeak?.line).toBe(1);
+  });
 });
+
 
