@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@latryee/envguard"><img src="https://img.shields.io/npm/v/@latryee/envguard?style=flat-square&color=blue" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/@latryee/envguard"><img src="https://img.shields.io/npm/dm/@latryee/envguard?style=flat-square&color=indigo" alt="monthly downloads" /></a>
+  <a href="https://www.npmjs.com/package/@latrye/envguard"><img src="https://img.shields.io/npm/v/@latrye/envguard?style=flat-square&color=blue" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@latrye/envguard"><img src="https://img.shields.io/npm/dm/@latrye/envguard?style=flat-square&color=indigo" alt="monthly downloads" /></a>
   <a href="https://github.com/latryee/envguard/actions"><img src="https://img.shields.io/github/actions/workflow/status/latryee/envguard/ci.yml?branch=main&style=flat-square" alt="Build Status" /></a>
   <a href="https://github.com/latryee/envguard/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="License" /></a>
   <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/tests-187%2F187%20passing-brightgreen.svg?style=flat-square" alt="Tests" /></a>
@@ -104,19 +104,19 @@ Run EnvGuard instantly in any repository with zero configuration:
 
 ```bash
 # Instant zero-config security scan & drift validation
-npx @latryee/envguard
+npx @latrye/envguard
 ```
 
 ### Install as a Development Dependency
 ```bash
 # npm
-npm install -D @latryee/envguard
+npm install -D @latrye/envguard
 
 # pnpm
-pnpm add -D @latryee/envguard
+pnpm add -D @latrye/envguard
 
 # yarn
-yarn add -D @latryee/envguard
+yarn add -D @latrye/envguard
 ```
 
 ---
@@ -141,7 +141,7 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - run: npx @latryee/envguard --format sarif > envguard.sarif || true
+      - run: npx @latrye/envguard --format sarif > envguard.sarif || true
       - uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: envguard.sarif
@@ -155,7 +155,7 @@ Block committed secrets and framework leaks before they leave local machines:
 
 ```bash
 # Install native Git pre-commit hook in 1 click
-npx @latryee/envguard hook install
+npx @latrye/envguard hook install
 ```
 
 Or configure inside `.pre-commit-config.yaml`:
@@ -220,7 +220,7 @@ $$H_{\text{normalized}} = \frac{H}{\log_2(|\Sigma_{\text{detected}}|)}$$
 ### 3. Vault Resilience & Environment Drift Watchdog
 
 ```ts
-import { watchEnvironmentDrift, formatDriftReport, ResilientExecutor } from '@latryee/envguard';
+import { watchEnvironmentDrift, formatDriftReport, ResilientExecutor } from '@latrye/envguard';
 
 // 1. Live Environment Drift Watchdog
 const report = watchEnvironmentDrift({
@@ -242,7 +242,7 @@ console.log(formatDriftReport(report, 'markdown'));
 EnvGuard generates standard **OASIS SARIF 2.1.0** and **Language Server Protocol (LSP)** diagnostic items for instant editor squiggly feedback:
 
 ```ts
-import { computeEnvDiff, generateLspDiagnostics } from '@latryee/envguard';
+import { computeEnvDiff, generateLspDiagnostics } from '@latrye/envguard';
 
 const diff = computeEnvDiff({ envAst, exampleAst, codeKeys });
 const lspMap = generateLspDiagnostics(diff);
@@ -260,7 +260,7 @@ for (const [uri, diagnostics] of lspMap.entries()) {
 Replace `dotenv` with `envguard` for zero-overhead loading, variable expansion, and startup type enforcement:
 
 ```ts
-import { loadEnv } from '@latryee/envguard';
+import { loadEnv } from '@latrye/envguard';
 
 // Automatically loads .env, expands ${PORT} variables, and validates types against .env.example
 loadEnv({ strict: true });
@@ -269,10 +269,10 @@ loadEnv({ strict: true });
 #### Preload in Node.js Applications:
 ```bash
 # CommonJS
-node -r @latryee/envguard/register app.js
+node -r @latrye/envguard/register app.js
 
 # ES Modules
-node --import @latryee/envguard/register app.js
+node --import @latrye/envguard/register app.js
 ```
 
 ---

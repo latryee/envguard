@@ -1,5 +1,5 @@
 {
-  "name": "@latryee/envguard",
+  "name": "@latrye/envguard",
   "version": "1.2.0",
   "description": "Zero-config Git secret leaks detector, type validator, and .env.example synchronizer.",
   "author": "latryee",
@@ -47,7 +47,7 @@
     }
   },
   "bin": {
-    "envguard": "./dist/cli.js"
+    "envguard": "dist/cli.js"
   },
   "files": [
     "dist",
