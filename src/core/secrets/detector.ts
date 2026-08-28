@@ -23,11 +23,14 @@ export interface DetectSecretsOptions {
 }
 
 /**
- * Masks a secret string keeping the first 3 and last 3 characters visible for recognition.
+ * Masks a secret string keeping minimal characters visible for recognition without exposing the secret.
  */
 export function maskSecret(secret: string): string {
   if (!secret) return '***';
   if (secret.length <= 8) return '***';
+  if (secret.length <= 16) {
+    return `${secret.slice(0, 2)}...${secret.slice(-2)}`;
+  }
   return `${secret.slice(0, 4)}...${secret.slice(-4)}`;
 }
 

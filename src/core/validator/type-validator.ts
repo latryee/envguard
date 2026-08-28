@@ -103,7 +103,21 @@ export function validateFieldValue(
 
     case 'url':
     case 'uri': {
-      if (actualInferred !== 'url') {
+      let isValidUrl = false;
+      if (!trimmed.includes(' ') && !trimmed.includes('\n')) {
+        if (/^(https?|wss?):\/\//i.test(trimmed)) {
+          try {
+            new URL(trimmed);
+            isValidUrl = true;
+          } catch {
+            isValidUrl = false;
+          }
+        } else if (/^(postgres|postgresql|mongodb(?:\+srv)?|redis|rediss|mysql|sqlite|grpc):\/\/.+$/i.test(trimmed)) {
+          isValidUrl = true;
+        }
+      }
+
+      if (!isValidUrl) {
         return {
           key: schema.key,
           value: trimmed,

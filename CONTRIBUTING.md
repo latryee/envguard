@@ -6,7 +6,7 @@ Thank you for your interest in contributing to **EnvGuard**!
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/username/envguard.git
+   git clone https://github.com/latryee/envguard.git
    cd envguard
    ```
 
@@ -15,9 +15,10 @@ Thank you for your interest in contributing to **EnvGuard**!
    npm install
    ```
 
-3. **Run tests:**
+3. **Run tests & coverage:**
    ```bash
    npm test
+   npm run test:coverage
    ```
 
 4. **Build project:**
@@ -25,14 +26,15 @@ Thank you for your interest in contributing to **EnvGuard**!
    npm run build
    ```
 
-5. **Typecheck:**
+5. **Typecheck & Lint:**
    ```bash
    npm run typecheck
+   npm run lint
    ```
 
 ## Pull Request Guidelines
 
 - Ensure all Vitest unit tests pass (`npm test`).
-- Ensure no TypeScript compile errors (`npm run typecheck`).
+- Ensure no TypeScript compile or lint errors (`npm run typecheck`).
 - Add tests for any new parser syntax, regex rules, or CLI commands.
 - Keep dependencies minimal and zero-overhead.

@@ -125,20 +125,30 @@ export function syncEnvExample(options: SyncOptions = {}): SyncResult {
     }
   }
 
-  const updatedAst: EnvFileAst = {
-    filePath: examplePath,
-    entries: updatedEntries,
-    variables: new Map(),
-    rawContent: ''
-  };
+  if (isNewFile || addedKeys.length > 0 || prunedKeys.length > 0) {
+    const updatedAst: EnvFileAst = {
+      filePath: examplePath,
+      entries: updatedEntries,
+      variables: new Map(),
+      rawContent: ''
+    };
 
-  const updatedContent = serializeEnv(updatedAst);
-  fs.writeFileSync(examplePath, updatedContent, 'utf8');
+    const updatedContent = serializeEnv(updatedAst);
+    fs.writeFileSync(examplePath, updatedContent, 'utf8');
+
+    return {
+      addedKeys,
+      prunedKeys,
+      updatedContent,
+      examplePath,
+      isNewFile
+    };
+  }
 
   return {
     addedKeys,
     prunedKeys,
-    updatedContent,
+    updatedContent: exampleAst.rawContent,
     examplePath,
     isNewFile
   };

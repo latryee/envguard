@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { calculateShannonEntropy } from '../src/core/secrets/entropy.js';
-import { detectSecretsInValue } from '../src/core/secrets/detector.js';
+import { calculateShannonEntropy, isHighEntropyString } from '../src/core/secrets/entropy.js';
+import { detectSecretsInValue, maskSecret } from '../src/core/secrets/detector.js';
 
 describe('Secret Leak & Shannon Entropy Detection Engine', () => {
   it('calculates Shannon entropy correctly', () => {
@@ -9,11 +9,19 @@ describe('Secret Leak & Shannon Entropy Detection Engine', () => {
     expect(low).toBe(0);
 
     // High entropy (cryptographic key / random base64)
-    const high = calculateShannonEntropy('7f8a9e2b1c4d5e6f8a9b0c1d2e3f4a5b');
-    expect(high).toBeGreaterThan(3.5);
+    const high = calculateShannonEntropy('N3wY0rk$3cr3tT0k3n_v4Lu3#987!xYzQ');
+    expect(high).toBeGreaterThan(4.0);
   });
 
-  it('detects AWS Access Keys', () => {
+  it('masks secrets safely without leaking short token contents', () => {
+    expect(maskSecret('')).toBe('***');
+    expect(maskSecret('12345')).toBe('***');
+    expect(maskSecret('12345678')).toBe('***');
+    expect(maskSecret('123456789012')).toBe('12...12');
+    expect(maskSecret('sk-proj-1234567890abcdef123456')).toBe('sk-p...3456');
+  });
+
+  it('detects AWS Access Keys and Secret Keys', () => {
     const awsSample = ['AKIA', 'IOSFODNN7EXAMPLE'].join('');
     const findings = detectSecretsInValue(awsSample, 'AWS_ACCESS_KEY_ID');
     expect(findings.length).toBeGreaterThan(0);
@@ -45,6 +53,33 @@ describe('Secret Leak & Shannon Entropy Detection Engine', () => {
     expect(stripe[0].ruleId).toBe('stripe-secret-key');
   });
 
+  it('detects Slack Tokens, Google API Keys, SendGrid Keys, and JWTs', () => {
+    const slackSample = ['xoxb', '123456789012', '123456789012', 'abcdefghijklmnopqrstuvwx'].join('-');
+    const slack = detectSecretsInValue(slackSample, 'SLACK_TOKEN');
+    expect(slack).toHaveLength(1);
+    expect(slack[0].ruleId).toBe('slack-token');
+
+    // Standard Google API key is 39 chars: AIza + 35 chars
+    const googleSample = ['AIza', 'SyD1234567890abcdefghijklmnopqrstuv'].join('');
+    const google = detectSecretsInValue(googleSample, 'GOOGLE_KEY');
+    expect(google).toHaveLength(1);
+    expect(google[0].ruleId).toBe('google-api-key');
+
+    const sendgridSample = ['SG', '1234567890123456789012', '1234567890123456789012345678901234567890123'].join('.');
+    const sendgrid = detectSecretsInValue(sendgridSample, 'SENDGRID_KEY');
+    expect(sendgrid).toHaveLength(1);
+    expect(sendgrid[0].ruleId).toBe('sendgrid-api-key');
+
+    const jwtSample = [
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+      'eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ',
+      'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'
+    ].join('.');
+    const jwt = detectSecretsInValue(jwtSample, 'JWT_TOKEN');
+    expect(jwt).toHaveLength(1);
+    expect(jwt[0].ruleId).toBe('jwt-token');
+  });
+
   it('detects Private Key Blocks', () => {
     const privKey = `-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEA0Y+u4n...
@@ -54,7 +89,18 @@ MIIEowIBAAKCAQEA0Y+u4n...
     expect(findings[0].ruleId).toBe('private-key');
   });
 
-  it('does NOT trigger false positives on safe dummy placeholders', () => {
+  it('detects unclassified high-entropy random secrets', () => {
+    const randomSecret = 'N3wY0rk$3cr3tT0k3n_v4Lu3#987!xYzQpL91';
+    const findings = detectSecretsInValue(randomSecret, 'MY_CUSTOM_SECRET');
+    expect(findings.length).toBeGreaterThan(0);
+    expect(findings[0].ruleId).toBe('high-entropy-secret');
+  });
+
+  it('does NOT trigger false positives on UUIDs or safe dummy placeholders', () => {
+    const uuid = '123e4567-e89b-12d3-a456-426614174000';
+    expect(isHighEntropyString(uuid)).toBe(false);
+    expect(detectSecretsInValue(uuid, 'SESSION_ID')).toHaveLength(0);
+
     const placeholders = [
       'your_api_key_here',
       'your-stripe-secret-key',

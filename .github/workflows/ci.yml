@@ -27,11 +27,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Typecheck & Lint
+        run: |
+          npm run typecheck
+          npm run lint
 
-      - name: Run Vitest Suite
-        run: npm test
+      - name: Run Vitest Suite with Coverage
+        run: npm run test:coverage
 
       - name: Build Bundles (ESM, CJS, DTS)
         run: npm run build

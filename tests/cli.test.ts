@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { runCheck } from '../src/cli/commands/check.js';
 import { runSync } from '../src/cli/commands/sync.js';
 import { runGenTypes } from '../src/cli/commands/gen-types.js';
+import { runHookInstall } from '../src/cli/commands/hook.js';
+import { runInit } from '../src/cli/commands/init.js';
 
 describe('CLI Commands Integration', () => {
   let tempDir: string;
@@ -54,6 +56,99 @@ describe('CLI Commands Integration', () => {
     try {
       const checkCode = await runCheck({ quiet: true, noBanner: true });
       expect(checkCode).toBe(1);
+    } finally {
+      process.chdir(oldCwd);
+    }
+  });
+
+  it('fails in strict mode when warnings exist', async () => {
+    fs.writeFileSync(path.join(tempDir, '.env.example'), 'PORT=3000\n');
+    fs.writeFileSync(path.join(tempDir, '.env'), 'PORT=3000\nNEW_UNDOCUMENTED_VAR=123\n');
+
+    const oldCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      // Non-strict: exit code 0 because warnings only
+      const nonStrictCode = await runCheck({ strict: false, quiet: true, noBanner: true });
+      expect(nonStrictCode).toBe(0);
+
+      // Strict: exit code 1 because warnings are treated as failures
+      const strictCode = await runCheck({ strict: true, quiet: true, noBanner: true });
+      expect(strictCode).toBe(1);
+    } finally {
+      process.chdir(oldCwd);
+    }
+  });
+
+  it('outputs valid JSON format with --format json', async () => {
+    fs.writeFileSync(path.join(tempDir, '.env'), 'PORT=3000\n');
+    fs.writeFileSync(path.join(tempDir, '.env.example'), 'PORT=3000\n');
+
+    const oldCwd = process.cwd();
+    process.chdir(tempDir);
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      const checkCode = await runCheck({ format: 'json', noBanner: true });
+      expect(checkCode).toBe(0);
+
+      const jsonCall = logSpy.mock.calls.find((call) => {
+        try {
+          const parsed = JSON.parse(call[0]);
+          return parsed.status === 'passed';
+        } catch {
+          return false;
+        }
+      });
+      expect(jsonCall).toBeDefined();
+    } finally {
+      logSpy.mockRestore();
+      process.chdir(oldCwd);
+    }
+  });
+
+  it('outputs GitHub workflow commands with --format github', async () => {
+    fs.writeFileSync(path.join(tempDir, '.env'), 'PORT=3000\n');
+    fs.writeFileSync(path.join(tempDir, '.env.example'), 'PORT=3000\nMISSING_REQUIRED=abc # @required\n');
+
+    const oldCwd = process.cwd();
+    process.chdir(tempDir);
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      const checkCode = await runCheck({ format: 'github', noBanner: true });
+      expect(checkCode).toBe(1);
+
+      const ghCall = logSpy.mock.calls.find((call) => call[0]?.includes('::error'));
+      expect(ghCall).toBeDefined();
+    } finally {
+      logSpy.mockRestore();
+      process.chdir(oldCwd);
+    }
+  });
+
+  it('runs init workflow cleanly', async () => {
+    const oldCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      const initCode = await runInit();
+      expect(initCode).toBe(0);
+      expect(fs.existsSync(path.join(tempDir, '.env.example'))).toBe(true);
+    } finally {
+      process.chdir(oldCwd);
+    }
+  });
+
+  it('handles hook install command', () => {
+    const oldCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      // In a non-git directory, hook install returns 1
+      const exitCode = runHookInstall();
+      expect(exitCode).toBe(1);
     } finally {
       process.chdir(oldCwd);
     }

@@ -85,7 +85,7 @@ export const SECRET_RULES: SecretRule[] = [
     name: 'Google API Key',
     category: 'cloud',
     severity: 'high',
-    regex: /\b(AIza[0-9A-Za-z-_]{35})\b/g,
+    regex: /\b(AIza[0-9A-Za-z_-]{35})\b/g,
     description: 'Exposed Google Cloud / Maps / Firebase API Key.',
     remediation: 'Restrict or rotate key in Google Cloud Console Credentials.'
   },

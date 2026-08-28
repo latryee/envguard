@@ -69,7 +69,21 @@ export function installPreCommitHook(cwd = process.cwd()): HookInstallResult {
   }
 
   // Native Git Hook
-  const hooksDir = path.join(gitRoot, '.git', 'hooks');
+  let hooksDir = path.join(gitRoot, '.git', 'hooks');
+  const gitPath = path.join(gitRoot, '.git');
+  if (fs.existsSync(gitPath) && fs.statSync(gitPath).isFile()) {
+    try {
+      const gitFileContent = fs.readFileSync(gitPath, 'utf8');
+      const match = gitFileContent.match(/gitdir:\s*(.+)/);
+      if (match) {
+        const resolvedGitDir = path.resolve(gitRoot, match[1].trim());
+        hooksDir = path.join(resolvedGitDir, 'hooks');
+      }
+    } catch {
+      // fallback to default
+    }
+  }
+
   if (!fs.existsSync(hooksDir)) {
     fs.mkdirSync(hooksDir, { recursive: true });
   }

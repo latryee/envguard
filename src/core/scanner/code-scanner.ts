@@ -57,6 +57,15 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
     }
   }
 
+  if (options.customGlobs !== undefined && options.customGlobs.length === 0) {
+    return {
+      references: [],
+      uniqueKeys: new Set(),
+      keyLocations: new Map(),
+      scannedFilesCount: 0
+    };
+  }
+
   const globPatterns = options.customGlobs && options.customGlobs.length > 0
     ? options.customGlobs
     : ['**/*'];
@@ -74,6 +83,9 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
   const uniqueKeys = new Set<string>();
   const keyLocations = new Map<string, CodeReference[]>();
   let scannedFilesCount = 0;
+
+  // JS/TS Destructuring Regex: const { A, B: renamed, C = default } = process.env
+  const jsDestructuringRegex = /(?:(?:const|let|var)\s*\{|(?:\(|^|\s)\{\s*)([^}]+)\}\s*=\s*(?:process\.env|import\.meta\.env|Bun\.env)\b/g;
 
   for (const file of files) {
     const filename = path.basename(file);
@@ -102,6 +114,50 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const lineContent = lines[lineIdx];
       const lineNum = lineIdx + 1;
+      const trimmedLine = lineContent.trim();
+
+      // Skip empty lines or comment lines
+      if (
+        !trimmedLine ||
+        trimmedLine.startsWith('//') ||
+        trimmedLine.startsWith('/*') ||
+        trimmedLine.startsWith('*') ||
+        (trimmedLine.startsWith('#') && matchingLang.language !== 'docker') ||
+        trimmedLine.startsWith('--')
+      ) {
+        continue;
+      }
+
+      // Handle JS/TS destructuring
+      if (matchingLang.language === 'typescript') {
+        jsDestructuringRegex.lastIndex = 0;
+        let dMatch: RegExpExecArray | null;
+        while ((dMatch = jsDestructuringRegex.exec(lineContent)) !== null) {
+          const rawBlock = dMatch[1];
+          const parts = rawBlock.split(',');
+          for (const rawPart of parts) {
+            const trimmedPart = rawPart.trim();
+            if (!trimmedPart) continue;
+            // Handle rename (A: b) or default assignment (A = 'default')
+            const varName = trimmedPart.split(/[:=]/)[0].trim();
+            if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(varName) && !ignoredKeys.has(varName)) {
+              const ref: CodeReference = {
+                key: varName,
+                file: path.relative(cwd, file).replace(/\\/g, '/'),
+                line: lineNum,
+                column: dMatch.index + 1,
+                snippet: lineContent.trim(),
+                language: 'typescript'
+              };
+              references.push(ref);
+              uniqueKeys.add(varName);
+              const existing = keyLocations.get(varName) || [];
+              existing.push(ref);
+              keyLocations.set(varName, existing);
+            }
+          }
+        }
+      }
 
       for (const regex of matchingLang.regexes) {
         // Reset regex state

@@ -12,24 +12,24 @@
   <a href="https://github.com/latryee/envguard/actions"><img src="https://img.shields.io/github/actions/workflow/status/latryee/envguard/ci.yml?branch=main&style=flat-square" alt="Build Status" /></a>
   <a href="https://github.com/latryee/envguard/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="License" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/language-TypeScript-blue.svg?style=flat-square" alt="TypeScript" /></a>
-  <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/tests-100%25%20passing-brightgreen.svg?style=flat-square" alt="Tests" /></a>
+  <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/tests-60%2F60%20passing-brightgreen.svg?style=flat-square" alt="Tests" /></a>
   <a href="#-competitive-matrix"><img src="https://img.shields.io/badge/zero-cloud%20dependency-emerald.svg?style=flat-square" alt="Zero Cloud" /></a>
 </p>
 
 <p align="center">
-  <img src="assets/demo.png" alt="envguard terminal demo" width="100%" />
+  <img src="assets/demo.gif" alt="envguard terminal demo" width="100%" />
 </p>
 
 <br />
 
 ## ❓ Why Another Environment Tool?
 
-Existing tools force developers to choose between heavy SaaS lock-in or fragmented scripts:
-- **Cloud Secrets Managers** (*Doppler, 1Password, HashiCorp Vault*) are powerful for production infrastructure, but add cloud latency, account provisioning overhead, and internet dependencies for simple local development.
-- **Git Secret Scanners** (*Gitleaks, Trufflehog*) detect regexes in commit history, but are **100% blind to schema drift, missing variables, or runtime type mismatches** (e.g. `PORT` entered as text or out of range).
-- **Runtime Validators** (*Zod, Envalid, t3-env*) only protect your application *after* boot, are tied to specific web frameworks, and do not keep `.env.example` templates synchronized for your team.
+Managing environment variables in modern software stacks typically involves trade-offs between heavy SaaS platforms and fragmented scripts:
+- **Cloud Secrets Managers** (*Doppler, HashiCorp Vault, AWS Secrets Manager*) are essential for production infrastructure, but introduce cloud latency, account provisioning overhead, and internet dependencies during local development.
+- **Git Secret Scanners** (*Gitleaks, Trufflehog*) scan git commit history for credential regexes, but do not detect schema drift, missing variables, or runtime type mismatches (such as `PORT` set to a string or out of range).
+- **Runtime Validators** (*Zod, Envalid, t3-env*) validate process variables after application boot, are coupled to specific application frameworks, and do not keep `.env.example` templates synchronized across teams.
 
-> **`envguard` operates at the developer workflow boundary:** It inspects your actual code references across any language, validates semantic types, blocks secret leaks with Shannon entropy, and keeps `.env.example` continuously up-to-date with safe placeholders — **100% offline, in milliseconds, with zero configuration.**
+> **`envguard` operates at the developer workflow boundary:** It inspects your actual code references across multiple languages, validates semantic types, detects secret leaks using Shannon entropy and curated signatures, and keeps `.env.example` continuously up-to-date with safe placeholders — **100% offline, in milliseconds, with zero configuration.**
 
 ---
 
@@ -37,11 +37,11 @@ Existing tools force developers to choose between heavy SaaS lock-in or fragment
 
 | Feature | `envguard` | `dotenv-vault` | `Doppler` | `Gitleaks` | `t3-env / Zod` |
 |:---|:---:|:---:|:---:|:---:|:---:|
-| **Zero Cloud / 100% Offline** | ✅ **Yes** | ❌ Requires Cloud | ❌ Cloud SaaS | ✅ Yes | ✅ Yes |
+| **Zero Cloud / 100% Offline** | ✅ **Yes** | ❌ Cloud login | ❌ Cloud SaaS | ✅ Yes | ✅ Yes |
 | **Zero-Config Setup (`npx`)** | ✅ **Instant** | ❌ Vault login | ❌ CLI auth | ⚠️ Config needed | ❌ In-code schema |
-| **`.env.example` Auto-Sync & Masking** | ✅ **Automated** | ❌ No | ❌ No | ❌ No | ❌ No |
-| **Multi-Language AST Reference Scanner** | ✅ **JS/TS/Py/Go/Rust** | ❌ No | ❌ No | ❌ Git regex only | ❌ TS/JS only |
-| **Semantic Type Validation (Port, URL, IP)** | ✅ **Built-in** | ❌ Strings only | ❌ Strings only | ❌ No | ✅ In-code |
+| **`.env.example` Auto-Sync & Safe Masking** | ✅ **Automated** | ❌ No | ❌ No | ❌ No | ❌ No |
+| **Multi-Language Reference Scanner** | ✅ **JS/TS/Py/Go/Rust/PHP/Ruby** | ❌ No | ❌ No | ❌ Git regex only | ❌ TS/JS only |
+| **Semantic Type Validation (Port, URL, IP, JSON)** | ✅ **Built-in** | ❌ Strings only | ❌ Strings only | ❌ No | ✅ In-code |
 | **Shannon Entropy Secret Detection** | ✅ **Built-in** | ❌ No | ❌ No | ✅ Built-in | ❌ No |
 | **1-Click Git Pre-Commit Hook** | ✅ **Built-in** | ❌ No | ❌ No | ⚠️ Custom setup | ❌ No |
 | **Ambient TypeScript Type Gen (`env.d.ts`)** | ✅ **Built-in** | ❌ No | ❌ No | ❌ No | ⚠️ Manual schema |
@@ -50,10 +50,10 @@ Existing tools force developers to choose between heavy SaaS lock-in or fragment
 
 ## 🎯 The Core Problems It Solves
 
-When a new engineer joins a team or clones a repository:
-1. **`.env.example` is hopelessly outdated:** Variables added over months are undocumented, leading to broken onboarding and runtime crashes.
-2. **Type mismatches explode in production:** `PORT` is entered as a string or out of range, boolean flags are misspelled, database connection strings are malformed.
-3. **Catastrophic secret leaks:** Real API keys (OpenAI, Stripe, AWS, GitHub PATs) accidentally get committed to `.env.example` or Git staged files.
+When developers collaborate or clone a repository:
+1. **`.env.example` is frequently outdated:** Variables added over months remain undocumented, causing broken local onboarding and missing runtime configs.
+2. **Type mismatches fail at runtime:** `PORT` is entered as text or out of range (1–65535), boolean flags are misspelled, or database connection strings are malformed.
+3. **Accidental secret leaks:** Real API keys (OpenAI, Anthropic, Stripe, AWS, GitHub PATs) accidentally get committed to `.env.example` or Git staged files.
 
 ---
 
@@ -63,27 +63,29 @@ Run instantly with zero configuration in any repository:
 
 ```bash
 # Run full scan and drift check
-npx @latrye/envguard
+npx @latryee/envguard
 ```
 
 ### Install Globally or as a Dev Dependency
 ```bash
 # Global CLI
-npm install -g @latrye/envguard
+npm install -g @latryee/envguard
 
 # Or locally in your project
-npm install -D @latrye/envguard
+npm install -D @latryee/envguard
 ```
 
 ---
 
 ## 🪝 1-Click Git Pre-Commit Hook
 
-Never accidentally push real secrets or missing variables to GitHub again:
+Intercept secret leaks, type mismatches, and undocumented environment variables before they are committed:
 
 ```bash
 npx envguard hook install
 ```
+
+*Supports both native Git hooks (`.git/hooks/pre-commit`, worktrees, submodules) and Husky (`.husky/pre-commit`).*
 
 <p align="center">
   <img src="assets/hook-demo.png" alt="envguard git hook interception demo" width="100%" />
@@ -94,7 +96,7 @@ npx envguard hook install
 ## 🛠️ CLI Commands & Workflows
 
 ### `envguard check` (Default)
-Performs complete scan across project source code, `.env`, and `.env.example`:
+Performs a complete scan across project source code, `.env`, and `.env.example`:
 ```bash
 # Standard check
 npx envguard
@@ -102,7 +104,7 @@ npx envguard
 # Strict mode for CI (fails on warnings too)
 npx envguard --strict
 
-# Check only Git staged files (ultra fast)
+# Check only Git staged files (fast pre-commit mode)
 npx envguard --staged
 
 # Formatted output for CI/CD pipelines
@@ -111,8 +113,9 @@ npx envguard --format json
 ```
 
 ### `envguard sync` (or `envguard fix`)
-Automatically creates or updates `.env.example` based on project source code and `.env`, intelligently masking sensitive data into safe placeholders:
+Automatically creates or updates `.env.example` based on project source code and `.env`, masking sensitive data into safe placeholders:
 ```bash
+# Update .env.example with missing variables
 npx envguard sync
 
 # Prune obsolete/stale variables no longer referenced anywhere:
@@ -120,7 +123,7 @@ npx envguard sync --prune
 ```
 
 ### `envguard gen-types` (or `envguard types`)
-Generates ambient TypeScript definitions (`env.d.ts`) so you get autocomplete and compile-time type safety:
+Generates ambient TypeScript definitions (`env.d.ts`) for autocomplete and compile-time type safety:
 ```bash
 npx envguard gen-types
 ```
@@ -129,17 +132,26 @@ npx envguard gen-types
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
-      PORT: `${number}` | string;
-      NODE_ENV: 'development' | 'production';
       DATABASE_URL: string;
       ENABLE_METRICS?: 'true' | 'false' | '1' | '0';
+      NODE_ENV: 'development' | 'production';
+      PORT: `${number}` | string;
     }
   }
+
+  interface ImportMetaEnv {
+    DATABASE_URL: string;
+    ENABLE_METRICS?: 'true' | 'false' | '1' | '0';
+    NODE_ENV: 'development' | 'production';
+    PORT: `${number}` | string;
+  }
 }
+
+export {};
 ```
 
 ### `envguard init`
-One-click onboarding that configures templates, generates type definitions, and installs git pre-commit hooks:
+One-click onboarding that configures templates, syncs variables, generates type definitions, and installs git pre-commit hooks:
 ```bash
 npx envguard init
 ```
@@ -148,7 +160,7 @@ npx envguard init
 
 ## 🏷️ Inline Schema Annotations
 
-You can annotate `.env.example` comments with schemas that `envguard` strictly validates:
+Annotate `.env.example` comments with schemas that `envguard` validates:
 
 ```dotenv
 # @type port @required @default 3000
@@ -165,17 +177,21 @@ ENABLE_FEATURE_FLAGS=false
 
 # @type email
 ADMIN_EMAIL=admin@example.com
+
+# @type pattern(^[a-z0-9-]+$) @description App namespace identifier
+APP_SLUG=my-app-service
 ```
 
 ### Supported Annotation Tags:
 | Tag | Description | Example |
 |---|---|---|
-| `@type <type>` | Semantic type | `@type port`, `@type boolean`, `@type url`, `@type email`, `@type json` |
+| `@type <type>` | Semantic type (`port`, `boolean`, `url`, `email`, `ip`, `json`, `uuid`, `base64`, `integer`, `number`) | `@type port`, `@type url` |
 | `@type enum(...)` | Strict enum values | `@type enum(dev, staging, prod)` |
-| `@required` | Must be present in `.env` | `@required` |
+| `@required` | Must be present in `.env` (default behavior unless `@optional`) | `@required` |
 | `@optional` | Optional in `.env` | `@optional` |
 | `@default <val>` | Default fallback value | `@default 3000` |
 | `@description <text>` | Documentation & IDE tooltip | `@description App port` |
+| `@pattern <regex>` | Custom regular expression validation | `@pattern ^v\d+\.\d+$` |
 
 ---
 
@@ -189,6 +205,8 @@ Create `envguard.config.json` or add an `"envguard"` section to `package.json`:
   "exampleFile": ".env.example",
   "typesFile": "src/types/env.d.ts",
   "strict": false,
+  "allowHighEntropy": false,
+  "entropyThreshold": 4.4,
   "ignoredKeys": ["MY_OPTIONAL_LOCAL_VAR"],
   "ignoreGlobs": ["tests/fixtures/**"]
 }
@@ -214,7 +232,7 @@ jobs:
         with:
           node-version: 20
       - name: Run EnvGuard
-        run: npx envguard --format github --strict
+        run: npx @latryee/envguard --format github --strict
 ```
 
 ---
@@ -245,9 +263,18 @@ jobs:
 └────────────────────────────────────────────────────────┘
 ```
 
-- **Blazing Fast**: Scans 1,000+ files in under 60 milliseconds.
-- **Zero Heavy Native Dependencies**: 100% pure TypeScript / Node.js ESM.
-- **100% Test Coverage**: Full suite of unit, AST, and CLI integration tests with Vitest.
+### Reproducible Benchmarks
+
+Measured on Node.js v22 across realistic codebase fixtures (`npm run bench`):
+
+| Workload Tier | Source Files | Variables / References | Average Execution Time |
+|:---|:---:|:---:|:---:|
+| **Small Project** | 25 files | 100 references | **~13 ms** |
+| **Medium Project** | 250 files | 1,000 references | **~98 ms** |
+| **Large Project** | 1,000 files | 4,000 references | **~380 ms** |
+
+- **Zero Heavy Native Dependencies**: Pure TypeScript / Node.js ESM.
+- **Thorough Test Suite**: 56 unit & integration tests across AST parsing, language scanning, type inference, entropy detection, and CLI execution.
 
 ---
 

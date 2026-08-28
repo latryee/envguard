@@ -86,8 +86,10 @@ export function generateTypeDeclarations(options: GenerateTypesOptions = {}): Ge
     }
   }
 
+  const sortedKeys = Array.from(schemaMap.keys()).sort();
   const entries: string[] = [];
-  for (const [key, meta] of schemaMap.entries()) {
+  for (const key of sortedKeys) {
+    const meta = schemaMap.get(key)!;
     const doc = meta.description ? `    /** ${meta.description} */\n` : '';
     const optional = meta.required ? '' : '?';
     entries.push(`${doc}    ${key}${optional}: ${meta.type};`);

@@ -52,11 +52,8 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
 
   // 3. Scan code references
   let customGlobs: string[] | undefined;
-  if (options.staged && isGitRepository(cwd)) {
-    const stagedFiles = getStagedFiles(cwd);
-    if (stagedFiles.length > 0) {
-      customGlobs = stagedFiles;
-    }
+  if (options.staged) {
+    customGlobs = isGitRepository(cwd) ? getStagedFiles(cwd) : [];
   }
 
   const scanResult = await scanCodebase({

@@ -36,14 +36,27 @@ export SECRET_KEY="xyz123"
     expect(ast.variables.get('SECRET_KEY')?.value).toBe('xyz123');
   });
 
-  it('extracts rich schema annotations (@type, @enum, @default, @description)', () => {
-    const comment = '# @type enum(development, staging, production) @default development @description App environment @required';
+  it('parses multiline quoted values spanning multiple lines', () => {
+    const raw = `
+PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEA0Y+u4n...
+-----END RSA PRIVATE KEY-----"
+`;
+    const ast = parseEnv(raw);
+    expect(ast.variables.has('PRIVATE_KEY')).toBe(true);
+    expect(ast.variables.get('PRIVATE_KEY')?.value).toContain('BEGIN RSA PRIVATE KEY');
+    expect(ast.variables.get('PRIVATE_KEY')?.value).toContain('END RSA PRIVATE KEY');
+  });
+
+  it('extracts rich schema annotations (@type, @enum, @default, @description, @pattern)', () => {
+    const comment = '# @type enum(development, staging, production) @default development @description App environment @required @pattern ^[a-z]+$';
     const ann = parseAnnotations(comment);
     expect(ann.type).toBe('enum');
     expect(ann.enumValues).toEqual(['development', 'staging', 'production']);
     expect(ann.default).toBe('development');
     expect(ann.description).toBe('App environment');
     expect(ann.required).toBe(true);
+    expect(ann.pattern).toBe('^[a-z]+$');
   });
 
   it('preserves structure and comments when serializing AST back to string', () => {

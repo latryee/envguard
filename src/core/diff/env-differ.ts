@@ -6,7 +6,7 @@ import { ValidationError, validateFieldValue } from '../validator/type-validator
 
 export interface DiffResult {
   missingInEnv: Array<{ key: string; required: boolean; default?: string; source: 'example' | 'code'; references?: CodeReference[] }>;
-  missingInExample: Array<{ key: string; value?: string; source: 'env' | 'code'; references?: CodeReference[] }>;
+  missingInExample: Array<{ key: string; source: 'env' | 'code'; references?: CodeReference[] }>;
   staleInExample: Array<{ key: string; line: number }>;
   typeMismatches: ValidationError[];
   secretLeaks: SecretFinding[];
@@ -87,11 +87,10 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
 
   // 3. Check for missing in .env.example (drift)
   // Keys in .env that are not documented in .env.example
-  for (const [key, envVar] of envVars.entries()) {
+  for (const [key] of envVars.entries()) {
     if (!exampleVars.has(key)) {
       missingInExample.push({
         key,
-        value: envVar.value,
         source: 'env',
         references: codeReferences.get(key)
       });

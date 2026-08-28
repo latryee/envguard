@@ -44,7 +44,9 @@ export function inferType(value: string, key?: string): InferredType {
 
   // URLs (HTTP, WS, Database URIs)
   if (
-    /^(https?|wss?|postgres|postgresql|mongodb(?:\+srv)?|redis|rediss|mysql|sqlite|grpc):\/\//i.test(trimmed)
+    /^(https?|wss?|postgres|postgresql|mongodb(?:\+srv)?|redis|rediss|mysql|sqlite|grpc):\/\//i.test(trimmed) &&
+    !trimmed.includes(' ') &&
+    !trimmed.includes('\n')
   ) {
     return 'url';
   }
