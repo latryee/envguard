@@ -16,13 +16,16 @@ export function isGitRepository(cwd = process.cwd()): boolean {
  * Gets the root directory of the Git repository.
  */
 export function getGitRoot(cwd = process.cwd()): string | null {
+  if (fs.existsSync(path.join(cwd, '.git'))) {
+    return path.resolve(cwd);
+  }
   try {
     const output = execSync('git rev-parse --show-toplevel', {
       cwd,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe']
     });
-    return output.trim();
+    return path.resolve(output.trim());
   } catch {
     return null;
   }

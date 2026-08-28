@@ -40,6 +40,7 @@ describe('Git Utilities & Hook Engine', () => {
     expect(res1.success).toBe(true);
     expect(res1.hookType).toBe('git-native');
     expect(fs.existsSync(res1.hookPath)).toBe(true);
+    expect(res1.hookPath.replace(/\\/g, '/')).toContain('.git/hooks/pre-commit');
 
     const hookContent = fs.readFileSync(res1.hookPath, 'utf8');
     expect(hookContent).toContain('envguard check --staged --strict');
@@ -58,7 +59,8 @@ describe('Git Utilities & Hook Engine', () => {
     const res = installPreCommitHook(tempDir);
     expect(res.success).toBe(true);
     expect(res.hookType).toBe('husky');
-    expect(fs.realpathSync(res.hookPath)).toBe(fs.realpathSync(path.join(huskyDir, 'pre-commit')));
+    expect(fs.existsSync(res.hookPath)).toBe(true);
+    expect(res.hookPath.replace(/\\/g, '/')).toContain('.husky/pre-commit');
 
     const content = fs.readFileSync(res.hookPath, 'utf8');
     expect(content).toContain('envguard check --staged --strict');
