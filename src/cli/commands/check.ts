@@ -7,7 +7,7 @@ import { computeEnvDiff } from '../../core/diff/env-differ.js';
 import { renderTerminalReport } from '../../reporters/terminal-reporter.js';
 import { renderJsonReport } from '../../reporters/json-reporter.js';
 import { renderGitHubReport } from '../../reporters/github-reporter.js';
-import { getStagedFiles, isGitRepository } from '../../core/git/git-utils.js';
+import { getStagedFileContent, getStagedFiles, isGitRepository } from '../../core/git/git-utils.js';
 import { getBanner } from '../ui/banners.js';
 import { loadConfig } from '../../core/config/config-loader.js';
 
@@ -38,14 +38,30 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
 
   // 1. Parse .env if exists
   let envAst: EnvFileAst | null = null;
-  if (fs.existsSync(envFilePath)) {
+  if (options.staged && isGitRepository(cwd)) {
+    const stagedContent = getStagedFileContent(envFilePath, cwd);
+    if (stagedContent !== null) {
+      envAst = parseEnv(stagedContent, { filePath: envFilePath });
+    } else if (fs.existsSync(envFilePath)) {
+      const content = fs.readFileSync(envFilePath, 'utf8');
+      envAst = parseEnv(content, { filePath: envFilePath });
+    }
+  } else if (fs.existsSync(envFilePath)) {
     const content = fs.readFileSync(envFilePath, 'utf8');
     envAst = parseEnv(content, { filePath: envFilePath });
   }
 
   // 2. Parse .env.example if exists
   let exampleAst: EnvFileAst | null = null;
-  if (fs.existsSync(exampleFilePath)) {
+  if (options.staged && isGitRepository(cwd)) {
+    const stagedContent = getStagedFileContent(exampleFilePath, cwd);
+    if (stagedContent !== null) {
+      exampleAst = parseEnv(stagedContent, { filePath: exampleFilePath });
+    } else if (fs.existsSync(exampleFilePath)) {
+      const content = fs.readFileSync(exampleFilePath, 'utf8');
+      exampleAst = parseEnv(content, { filePath: exampleFilePath });
+    }
+  } else if (fs.existsSync(exampleFilePath)) {
     const content = fs.readFileSync(exampleFilePath, 'utf8');
     exampleAst = parseEnv(content, { filePath: exampleFilePath });
   }
@@ -61,8 +77,10 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
     customGlobs,
     ignoredKeys: config.ignoredKeys,
     includeSystemVars: config.includeSystemVars,
-    ignoreGlobs: config.ignoreGlobs
+    ignoreGlobs: config.ignoreGlobs,
+    staged: !!options.staged
   });
+
 
   // 4. Compute full diff & leaks
   const diffResult = computeEnvDiff({

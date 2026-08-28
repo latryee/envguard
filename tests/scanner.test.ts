@@ -136,4 +136,41 @@ const active = process.env.ACTIVE_KEY;
     const result = await scanCodebase({ cwd: tempDir });
     expect(result.uniqueKeys.has('IGNORED_KEY')).toBe(false);
   });
+
+  it('scans git index content when staged is true even if working tree differs or is deleted', async () => {
+    const { execSync } = await import('node:child_process');
+    const { getStagedFiles } = await import('../src/core/git/git-utils.js');
+
+    execSync('git init', { cwd: tempDir, stdio: 'ignore' });
+    execSync('git config user.name "Test"', { cwd: tempDir, stdio: 'ignore' });
+    execSync('git config user.email "test@example.com"', { cwd: tempDir, stdio: 'ignore' });
+
+    const srcFile = path.join(tempDir, 'app.ts');
+    fs.writeFileSync(srcFile, 'const secret = process.env.STAGED_API_KEY;');
+    execSync('git add app.ts', { cwd: tempDir, stdio: 'ignore' });
+
+    // Modify working tree copy
+    fs.writeFileSync(srcFile, 'const clean = process.env.WORKING_TREE_KEY;');
+
+    const stagedFiles = getStagedFiles(tempDir);
+    const stagedResult = await scanCodebase({
+      cwd: tempDir,
+      staged: true,
+      customGlobs: stagedFiles
+    });
+
+    expect(stagedResult.uniqueKeys.has('STAGED_API_KEY')).toBe(true);
+    expect(stagedResult.uniqueKeys.has('WORKING_TREE_KEY')).toBe(false);
+
+    // Now delete working-tree copy completely
+    fs.unlinkSync(srcFile);
+    const deletedOnDiskResult = await scanCodebase({
+      cwd: tempDir,
+      staged: true,
+      customGlobs: stagedFiles
+    });
+
+    expect(deletedOnDiskResult.uniqueKeys.has('STAGED_API_KEY')).toBe(true);
+  });
 });
+

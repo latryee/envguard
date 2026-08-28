@@ -46,9 +46,10 @@ export { generateTypeDeclarations } from './core/generator/types-generator.js';
 export type { GenerateTypesOptions, GenerateTypesResult } from './core/generator/types-generator.js';
 
 // Git & Hooks
-export { isGitRepository, getGitRoot, getStagedFiles } from './core/git/git-utils.js';
+export { isGitRepository, getGitRoot, getStagedFiles, getStagedFileContent } from './core/git/git-utils.js';
 export { installPreCommitHook } from './core/git/hooks.js';
 export type { HookInstallResult } from './core/git/hooks.js';
+
 
 // Configuration
 export { loadConfig } from './core/config/config-loader.js';

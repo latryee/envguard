@@ -11,6 +11,7 @@ import {
   DEFAULT_IGNORED_EXTENSIONS,
   loadIgnorePatterns
 } from './ignore.js';
+import { getStagedFileContent } from '../git/git-utils.js';
 
 export interface ScanOptions {
   cwd?: string;
@@ -18,6 +19,7 @@ export interface ScanOptions {
   ignoredKeys?: string[];
   customGlobs?: string[];
   ignoreGlobs?: string[];
+  staged?: boolean;
 }
 
 export interface ScanResult {
@@ -66,18 +68,34 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
     };
   }
 
-  const globPatterns = options.customGlobs && options.customGlobs.length > 0
-    ? options.customGlobs
-    : ['**/*'];
+  let files: string[];
+  if (options.staged && options.customGlobs && options.customGlobs.length > 0) {
+    // When scanning staged files, resolve paths directly without requiring files to exist on disk
+    files = options.customGlobs
+      .map((p) => path.resolve(cwd, p))
+      .filter((file) => {
+        const rel = path.relative(cwd, file).replace(/\\/g, '/');
+        const ext = path.extname(file).toLowerCase();
+        if (DEFAULT_IGNORED_EXTENSIONS.includes(ext)) return false;
+        const segments = rel.split('/');
+        if (segments.some((s) => DEFAULT_IGNORED_DIRS.includes(s))) return false;
+        if (segments.some((s) => s.startsWith('.env'))) return false;
+        return true;
+      });
+  } else {
+    const globPatterns = options.customGlobs && options.customGlobs.length > 0
+      ? options.customGlobs
+      : ['**/*'];
 
-  const files = await fg(globPatterns, {
-    cwd,
-    ignore: ignorePatterns,
-    dot: false,
-    absolute: true,
-    onlyFiles: true,
-    followSymbolicLinks: false
-  });
+    files = await fg(globPatterns, {
+      cwd,
+      ignore: ignorePatterns,
+      dot: false,
+      absolute: true,
+      onlyFiles: true,
+      followSymbolicLinks: false
+    });
+  }
 
   const references: CodeReference[] = [];
   const uniqueKeys = new Set<string>();
@@ -103,11 +121,20 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
     scannedFilesCount++;
 
     let content: string;
-    try {
-      content = fs.readFileSync(file, 'utf8');
-    } catch {
-      continue;
+    if (options.staged) {
+      const stagedContent = getStagedFileContent(file, cwd);
+      if (stagedContent === null) {
+        continue;
+      }
+      content = stagedContent;
+    } else {
+      try {
+        content = fs.readFileSync(file, 'utf8');
+      } catch {
+        continue;
+      }
     }
+
 
     const lines = content.split(/\r?\n/);
 
