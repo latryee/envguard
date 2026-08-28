@@ -1,18 +1,15 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { execSync } from 'node:child_process';
 
 /**
- * Checks if the given directory is inside a Git repository.
+ * Checks if the given directory is a Git repository root.
  */
 export function isGitRepository(cwd = process.cwd()): boolean {
-  try {
-    execSync('git rev-parse --is-inside-work-tree', {
-      cwd,
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
+  if (fs.existsSync(path.join(cwd, '.git'))) {
     return true;
-  } catch {
-    return false;
   }
+  return false;
 }
 
 /**
