@@ -8,8 +8,10 @@ describe('Auto-Sync & Masking Engine', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-sync-')));
+    const raw = fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-sync-'));
+    tempDir = fs.realpathSync.native ? fs.realpathSync.native(raw) : fs.realpathSync(raw);
   });
+
 
   afterEach(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });

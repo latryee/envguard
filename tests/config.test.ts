@@ -9,8 +9,10 @@ describe('Config Loader', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-cfg-')));
+    const raw = fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-cfg-'));
+    tempDir = fs.realpathSync.native ? fs.realpathSync.native(raw) : fs.realpathSync(raw);
   });
+
 
   afterEach(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });

@@ -2,6 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, execSync } from 'node:child_process';
 
+function canonicalizePath(p: string): string {
+  try {
+    return fs.realpathSync.native ? fs.realpathSync.native(p) : fs.realpathSync(p);
+  } catch {
+    return path.resolve(p);
+  }
+}
+
 /**
  * Checks if the given directory is within a Git repository.
  */
@@ -9,13 +17,13 @@ export function isGitRepository(cwd = process.cwd()): boolean {
   return getGitRoot(cwd) !== null;
 }
 
-
 /**
  * Gets the root directory of the Git repository.
  */
 export function getGitRoot(cwd = process.cwd()): string | null {
-  if (fs.existsSync(path.join(cwd, '.git'))) {
-    return path.resolve(cwd);
+  const canonicalCwd = canonicalizePath(cwd);
+  if (fs.existsSync(path.join(canonicalCwd, '.git')) || fs.existsSync(path.join(cwd, '.git'))) {
+    return canonicalCwd;
   }
   try {
     const output = execSync('git rev-parse --show-toplevel', {
@@ -23,7 +31,7 @@ export function getGitRoot(cwd = process.cwd()): string | null {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe']
     });
-    return path.resolve(output.trim());
+    return canonicalizePath(output.trim());
   } catch {
     return null;
   }
@@ -33,7 +41,9 @@ export function getGitRoot(cwd = process.cwd()): string | null {
  * Returns a list of all staged file paths relative to Git root.
  */
 export function getStagedFiles(cwd = process.cwd()): string[] {
-  const root = getGitRoot(cwd) || cwd;
+  const root = getGitRoot(cwd);
+  if (!root) return [];
+  const canonicalCwd = canonicalizePath(cwd);
   try {
     const output = execFileSync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACMR'], {
       cwd: root,
@@ -45,8 +55,8 @@ export function getStagedFiles(cwd = process.cwd()): string[] {
       .map((f) => f.trim())
       .filter(Boolean)
       .map((f) => {
-        const abs = path.resolve(root, f);
-        return path.relative(cwd, abs).replace(/\\/g, '/');
+        const abs = canonicalizePath(path.resolve(root, f));
+        return path.relative(canonicalCwd, abs).replace(/\\/g, '/');
       });
   } catch {
     return [];
@@ -65,7 +75,8 @@ export function getStagedFileContent(filePath: string, cwd = process.cwd()): str
 
   try {
     const absPath = path.isAbsolute(filePath) ? filePath : path.resolve(cwd, filePath);
-    const relFromRoot = path.relative(root, absPath).replace(/\\/g, '/');
+    const canonicalAbs = canonicalizePath(absPath);
+    const relFromRoot = path.relative(root, canonicalAbs).replace(/\\/g, '/');
 
     const output = execFileSync('git', ['show', `:${relFromRoot}`], {
       cwd: root,
@@ -84,4 +95,5 @@ export function getStagedFileContent(filePath: string, cwd = process.cwd()): str
     return null;
   }
 }
+
 

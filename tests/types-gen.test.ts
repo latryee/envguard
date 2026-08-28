@@ -9,8 +9,10 @@ describe('TypeScript Type Generator', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-types-')));
+    const raw = fs.mkdtempSync(path.join(os.tmpdir(), 'envguard-test-types-'));
+    tempDir = fs.realpathSync.native ? fs.realpathSync.native(raw) : fs.realpathSync(raw);
   });
+
 
   afterEach(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
