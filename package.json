@@ -1,6 +1,6 @@
 {
   "name": "@latryee/envguard",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Zero-config Git secret leaks detector, type validator, and .env.example synchronizer.",
   "author": "latryee",
   "license": "MIT",
@@ -40,6 +40,10 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./register": {
+      "import": "./dist/register.js",
+      "require": "./dist/register.cjs"
     }
   },
   "bin": {

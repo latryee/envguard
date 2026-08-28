@@ -7,32 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.0] - 2026-08-28
+## [1.2.0] - 2026-08-28
 
 ### 🚀 Highlights & New Features
 
+- **Environment Diff & Drift Engine (`envguard diff <file1> <file2>`)**:
+  - Visually compares two environment files (e.g. `.env.staging` vs `.env.production`).
+  - Identifies unique keys, value differences, and type mismatches with automatic secret masking.
+- **Auto-Fix Formatter & Sorter (`envguard fmt`)**:
+  - Automatically cleans, reorganizes, and formats `.env` and `.env.example` files.
+  - Normalizes quotes (`as-needed`, `always-double`, `always-single`).
+  - Supports alphabetical sorting (`--sort alphabetical`) and domain prefix grouping (`--sort prefix` for `AWS_*`, `DATABASE_*`, etc.).
+  - Includes `--check` mode for CI pipelines.
+- **Zero-Cloud AES-256-GCM Encryption at Rest (`envguard encrypt` & `envguard decrypt`)**:
+  - Pure Node.js `node:crypto` implementation with scrypt key derivation and tamper-proof authentication tags.
+  - Safely encrypts `.env` to `.env.enc` for secure Git commits and zero-cloud CI/CD deployment.
+- **Runtime SDK & Preload Hook (`loadEnv` & `@latryee/envguard/register`)**:
+  - Built-in zero-overhead runtime loader replacing `dotenv`.
+  - Supports variable expansion (`${PORT}`, `${HOST:-localhost}`) and startup schema validation against `.env.example`.
+  - Preloadable via `node -r @latryee/envguard/register app.js` or `import '@latryee/envguard/register'`.
+- **Docker & Container Leak Guard (`.dockerignore` Audit)**:
+  - Audits `Dockerfile` and `.dockerignore` for accidental `.env` leakage into container image layers.
+- **Shell Autocompletion Generator (`envguard completion`)**:
+  - Generates autocomplete definitions for Bash, Zsh, Fish, and PowerShell.
+- **Test Suite Expansion**:
+  - **161 passing tests across 34 test files** with >91% statement coverage and 100% function coverage.
+
+---
+
+## [1.1.0] - 2026-08-28
+
+### 🚀 Highlights & Features
+
 - **Interactive TUI Fix Wizard (`envguard sync --interactive` / `envguard fix -i`)**:
   - Zero-dependency interactive prompter powered by Node.js `readline/promises`.
-  - Review environment drift and missing variables step-by-step: choose safe auto-placeholders, custom inputs, mark as optional, or skip.
 - **Client-Side Secret Leak Guard (React / Next.js / Vite / Remix / Astro)**:
-  - Detects client-side components (`'use client'`, `components/`, Vite `src/` bundles).
-  - Intercepts and flags private backend variables (`DATABASE_URL`, `STRIPE_SECRET_KEY`, `JWT_SECRET`) referenced without framework-required public prefixes (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`), preventing accidental bundling of secrets into client JavaScript.
+  - Detects and intercepts private backend secrets referenced in client bundles.
 - **Infrastructure & Multi-Format Exporters (`envguard export`)**:
-  - Export environment variables directly into:
-    - Kubernetes Secret YAML (`k8s-secret`)
-    - Docker Compose environment block (`docker-compose`)
-    - Terraform variables (`terraform` / `.tfvars`)
-    - Helm values (`helm`)
-    - JSON Schema (`json-schema`)
+  - Kubernetes Secret YAML, Docker Compose, Terraform, Helm, JSON Schema.
 - **Secret Vault Provider Bridge (`envguard pull`)**:
-  - Pull secrets directly from Doppler (`doppler`), Infisical (`infisical`), AWS Secrets Manager (`aws`), 1Password (`1password`), or HashiCorp Vault (`vault`).
+  - Pulls secrets from Doppler, Infisical, AWS Secrets Manager, 1Password, Vault.
 - **VS Code & IDE Tooling (`envguard vscode`)**:
-  - Automatically configures `.vscode/settings.json` with file nesting (`.env.*` grouped under `.env`), `.envguard.schema.json` schema associations, and dotenv syntax recommendations.
+  - File nesting, schema association, and syntax highlighting setup.
 - **GitHub PR Review Commenter & Step Summary (`--format pr-comment` / `--format summary`)**:
-  - Generates rich Markdown review comments with collapsible tables, diff indicators, and suggested fix commands.
-  - Automatically writes to `$GITHUB_STEP_SUMMARY` in GitHub Actions.
-- **Test Suite Expansion**:
-  - 139 passing tests across 27 test files with enforced Vitest coverage thresholds (>90% statements, 100% functions).
+  - Markdown PR comment report writing to `$GITHUB_STEP_SUMMARY`.
 
 ---
 
@@ -40,18 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🚀 Initial Production Release
 
-- **TypeScript / JavaScript AST Scanner**: Powered by the TypeScript Compiler API (`ts.createSourceFile`) for zero-false-positive detection of environment variables.
-- **Multi-Language Reference Scanner**: Tokenized comment-stripping scanners for Go, Python, Rust, PHP, Ruby, and Dockerfiles with zero heavy native dependencies (`node-gyp`).
-- **Curated Secret Detection & Confidence Scoring**:
-  - Signatures for OpenAI, Anthropic Claude, AWS, Google Cloud Service Accounts, Azure Storage & Client Secrets, GitHub, GitLab, Stripe, Slack, SendGrid, Twilio, Resend, npm, PyPI, Docker Hub, and Generic Private Keys.
-  - Multi-tier Confidence Scoring (0–100%) with `HIGH`, `MEDIUM`, `LOW` levels and `--paranoid` (`-P`) flag.
-  - Verified 0.00% False-Positive rate on negative test corpus.
-- **Git History Scanning (`--scan-history`)**: Scans git commit log diffs (`git log -p`) for hardcoded secrets introduced in past commits.
-- **16+ Semantic Types & Schema Validation**:
-  - Types: `port`, `boolean`, `integer`, `number`, `url`, `email`, `ip`, `json`, `uuid`, `base64`, `enum(...)`, `duration`, `cron`, `semver`, `hostname`, `regex(...)` / `pattern(...)`.
-- **Monorepo Workspace Discovery (`--workspaces`)**:
-  - Auto-discovers and scans npm, pnpm, yarn, and Turborepo workspace packages.
-- **SARIF 2.1.0 GitHub Code Scanning Output (`--format sarif`)**:
-  - Direct integration with GitHub Advanced Security and CodeQL workflows.
-- **Official GitHub Action (`action.yml`)**:
-  - Composite GitHub Action for zero-setup CI/CD pipelines (`uses: latryee/envguard@v1`).
+- **TypeScript / JavaScript AST Scanner**: TypeScript Compiler API (`ts.createSourceFile`).
+- **Multi-Language Reference Scanner**: Tokenized comment-stripping scanners for Go, Python, Rust, PHP, Ruby, and Dockerfiles.
+- **Curated Secret Detection & Confidence Scoring (0–100%)**: Curated rules, Shannon entropy, 0.00% False-Positive rate.
+- **Git History Scanning (`--scan-history`)**: Scans git commit log diffs.
+- **16+ Semantic Types & Schema Validation**.
+- **Monorepo Workspace Discovery (`--workspaces`)**.
+- **SARIF 2.1.0 GitHub Code Scanning Output (`--format sarif`)**.
+- **Official GitHub Action (`action.yml`)**.

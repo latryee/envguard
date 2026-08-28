@@ -49,9 +49,30 @@ export type { EnvFieldSchema } from './core/validator/schema.js';
 export { validateFieldValue } from './core/validator/type-validator.js';
 export type { ValidationError } from './core/validator/type-validator.js';
 
-// Diff Engine
+// Diff Engines (Schema Diff & File-to-File Diff)
 export { computeEnvDiff } from './core/diff/env-differ.js';
 export type { DiffOptions, DiffResult } from './core/diff/env-differ.js';
+export { compareEnvFiles } from './core/diff/file-differ.js';
+export type { FileDiffItem, FileDiffResult } from './core/diff/file-differ.js';
+
+// Formatter Engine
+export { formatEnv } from './core/formatter/env-formatter.js';
+export type { FormatterOptions } from './core/formatter/env-formatter.js';
+
+// Zero-Cloud AES-256-GCM Crypto
+export { encryptEnv, decryptEnv, generateEncryptionKey } from './core/crypto/env-crypto.js';
+
+// Runtime Loader & Preloader
+export { loadEnv, expandVariables, EnvGuardValidationError } from './runtime/loader.js';
+export type { LoadEnvOptions, LoadEnvResult } from './runtime/loader.js';
+
+// Docker & Container Security Guard
+export { auditDockerFiles } from './core/docker/docker-guard.js';
+export type { DockerAuditResult, DockerFinding } from './core/docker/docker-guard.js';
+
+// Shell Completion Generator
+export { generateCompletionScript } from './core/completion/generator.js';
+export type { ShellType } from './core/completion/generator.js';
 
 // Sync, Interactive Wizard & Masking
 export { syncEnvExample } from './core/sync/env-syncer.js';
