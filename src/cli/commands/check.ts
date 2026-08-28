@@ -70,7 +70,10 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
   let customGlobs: string[] | undefined;
   if (options.staged) {
     customGlobs = isGitRepository(cwd) ? getStagedFiles(cwd) : [];
+  } else if (config.customGlobs && config.customGlobs.length > 0) {
+    customGlobs = config.customGlobs;
   }
+
 
   const scanResult = await scanCodebase({
     cwd,

@@ -191,5 +191,39 @@ describe('CLI Commands Integration', () => {
       process.chdir(oldCwd);
     }
   });
+
+  it('honors customGlobs from config file when not in staged mode', async () => {
+    fs.writeFileSync(
+      path.join(tempDir, 'envguard.config.json'),
+      JSON.stringify({
+        customGlobs: ['src/**/*.ts']
+      })
+    );
+
+    const srcDir = path.join(tempDir, 'src');
+    const scriptsDir = path.join(tempDir, 'scripts');
+    fs.mkdirSync(srcDir, { recursive: true });
+    fs.mkdirSync(scriptsDir, { recursive: true });
+
+    // File matched by customGlobs
+    fs.writeFileSync(path.join(srcDir, 'app.ts'), 'const port = process.env.PORT;');
+    // File outside customGlobs (would cause drift if scanned)
+    fs.writeFileSync(path.join(scriptsDir, 'ignored.js'), 'const secret = process.env.UNCONFIGURED_IGNORED_VAR;');
+
+    fs.writeFileSync(path.join(tempDir, '.env'), 'PORT=3000\n');
+    fs.writeFileSync(path.join(tempDir, '.env.example'), 'PORT=3000\n');
+
+    const oldCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      // With strict mode, any drift from ignored.js would fail the check
+      const checkCode = await runCheck({ strict: true, quiet: true, noBanner: true });
+      expect(checkCode).toBe(0);
+    } finally {
+      process.chdir(oldCwd);
+    }
+  });
 });
+
 
