@@ -26,6 +26,14 @@ export {
 } from './core/scanner/ignore.js';
 export type { EnvguardIgnoreConfig, FileInlineIgnores } from './core/scanner/ignore.js';
 
+// Frameworks & Client-Side Leak Prevention
+export { detectFramework, getFrameworkInfo } from './core/frameworks/detector.js';
+export type { FrameworkInfo, SupportedFramework } from './core/frameworks/detector.js';
+export { loadCascadingEnv } from './core/frameworks/cascade.js';
+export type { CascadingEnvResult } from './core/frameworks/cascade.js';
+export { isClientContext, checkClientSideExposures } from './core/frameworks/client-leak.js';
+export type { ClientExposureFinding } from './core/frameworks/client-leak.js';
+
 // Secrets & Entropy
 export { calculateShannonEntropy, isHighEntropyString } from './core/secrets/entropy.js';
 export { detectSecretsInValue, maskSecret } from './core/secrets/detector.js';
@@ -45,10 +53,30 @@ export type { ValidationError } from './core/validator/type-validator.js';
 export { computeEnvDiff } from './core/diff/env-differ.js';
 export type { DiffOptions, DiffResult } from './core/diff/env-differ.js';
 
-// Sync & Masking
+// Sync, Interactive Wizard & Masking
 export { syncEnvExample } from './core/sync/env-syncer.js';
 export type { SyncOptions, SyncResult } from './core/sync/env-syncer.js';
+export { runInteractiveSync } from './core/sync/interactive-syncer.js';
+export type { InteractiveSyncOptions, InteractiveSyncResult } from './core/sync/interactive-syncer.js';
 export { generateSafePlaceholder } from './core/sync/masker.js';
+
+// Vault & Infrastructure Exporters
+export {
+  exportToK8sSecret,
+  exportToDockerCompose,
+  exportToTerraform,
+  exportToHelm,
+  exportToJson,
+  exportToJsonSchema,
+  exportEnv
+} from './core/vault/exporter.js';
+export type { ExportFormat, ExporterOptions } from './core/vault/exporter.js';
+export { pullFromVault } from './core/vault/providers.js';
+export type { PullSecretsOptions, PullSecretsResult, VaultProvider } from './core/vault/providers.js';
+
+// IDE & VS Code Integration
+export { setupVsCodeIntegration } from './core/ide/vscode.js';
+export type { VsCodeSetupResult } from './core/ide/vscode.js';
 
 // Generator
 export { generateTypeDeclarations } from './core/generator/types-generator.js';
@@ -76,8 +104,13 @@ export type { LoadedConfig } from './core/config/config-loader.js';
 export { DEFAULT_CONFIG } from './core/config/defaults.js';
 export type { EnvGuardConfig, SecretDetectionConfig } from './core/config/defaults.js';
 
+// Terminal Prompter UI
+export { promptQuestion, promptSelect, promptConfirm } from './cli/ui/prompt.js';
+export type { PromptSelectOption } from './cli/ui/prompt.js';
+
 // Reporters
 export { renderTerminalReport } from './reporters/terminal-reporter.js';
 export { renderJsonReport } from './reporters/json-reporter.js';
 export { renderGitHubReport } from './reporters/github-reporter.js';
 export { renderSarifReport } from './reporters/sarif-reporter.js';
+export { renderPrCommentReport } from './reporters/pr-comment-reporter.js';

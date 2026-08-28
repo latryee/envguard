@@ -1,12 +1,14 @@
 import pc from 'picocolors';
 import { scanCodebase } from '../../core/scanner/code-scanner.js';
 import { syncEnvExample } from '../../core/sync/env-syncer.js';
+import { runInteractiveSync } from '../../core/sync/interactive-syncer.js';
 import { loadConfig } from '../../core/config/config-loader.js';
 
 export interface SyncCommandOptions {
   env?: string;
   example?: string;
   prune?: boolean;
+  interactive?: boolean;
   quiet?: boolean;
 }
 
@@ -17,7 +19,17 @@ export async function runSync(options: SyncCommandOptions = {}): Promise<number>
   const envPath = options.env || config.envFile;
   const examplePath = options.example || config.exampleFile;
 
-  // Scan code references to make sure all used env vars are known
+  // Interactive mode
+  if (options.interactive) {
+    await runInteractiveSync({
+      cwd,
+      envFile: envPath,
+      exampleFile: examplePath
+    });
+    return 0;
+  }
+
+  // Standard sync
   const scanResult = await scanCodebase({ cwd });
 
   const result = syncEnvExample({

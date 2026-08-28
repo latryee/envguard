@@ -5,14 +5,14 @@
 <h1 align="center">🛡️ envguard</h1>
 
 <p align="center">
-  <strong>Zero-Config Git Secret Leaks Detector, Semantic Type Validator, AST Scanner &amp; <code>.env.example</code> Synchronizer</strong>
+  <strong>Zero-Config Git Secret Leaks Detector, Semantic Type Validator, AST Scanner, Client Leak Guard &amp; <code>.env.example</code> Synchronizer</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/latryee/envguard/actions"><img src="https://img.shields.io/github/actions/workflow/status/latryee/envguard/ci.yml?branch=main&style=flat-square" alt="Build Status" /></a>
   <a href="https://github.com/latryee/envguard/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="License" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/language-TypeScript-blue.svg?style=flat-square" alt="TypeScript" /></a>
-  <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/tests-117%2F117%20passing-brightgreen.svg?style=flat-square" alt="Tests" /></a>
+  <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/tests-139%2F139%20passing-brightgreen.svg?style=flat-square" alt="Tests" /></a>
   <a href="https://github.com/latryee/envguard"><img src="https://img.shields.io/badge/SARIF%202.1.0-Code%20Scanning-blueviolet.svg?style=flat-square" alt="SARIF" /></a>
   <a href="#-competitive-matrix"><img src="https://img.shields.io/badge/zero-cloud%20dependency-emerald.svg?style=flat-square" alt="Zero Cloud" /></a>
 </p>
@@ -30,7 +30,7 @@ Managing environment variables in modern software stacks usually requires balanc
 - **Git Secret Scanners** (*Gitleaks, Trufflehog*) scan git history for credentials, but ignore schema drift, missing variables, or runtime type mismatches (such as an invalid port number or malformed database URI).
 - **Runtime Validators** (*Zod, Envalid, t3-env*) validate process variables during app boot, are coupled to specific JS/TS runtimes, and cannot keep `.env.example` templates synchronized across developer teams.
 
-> **`envguard` operates at the developer workflow & pre-commit boundary:** It inspects your actual codebase references across languages (using TypeScript AST and tokenized scanners), validates semantic types, detects hardcoded secrets with Shannon entropy and curated signatures, scans git history, and keeps `.env.example` templates continuously up-to-date with safe placeholders — **100% offline, in milliseconds, with zero configuration.**
+> **`envguard` operates at the developer workflow & pre-commit boundary:** It inspects your actual codebase references across languages (using TypeScript Compiler AST and tokenized scanners), detects client-side secret exposure in React/Next.js/Vite bundles, validates semantic types, detects hardcoded secrets with Shannon entropy and curated signatures, scans git history, exports to Kubernetes/Docker/Terraform, and keeps `.env.example` templates continuously up-to-date with safe placeholders — **100% offline, in milliseconds, with zero configuration.**
 
 ---
 
@@ -41,10 +41,14 @@ Managing environment variables in modern software stacks usually requires balanc
 | **Zero Cloud / 100% Offline** | ✅ **Yes** | ✅ Yes | ❌ Cloud SaaS | ✅ Yes | ✅ Yes |
 | **Zero-Config Setup (`npx`)** | ✅ **Instant** | ⚠️ Binary setup | ❌ CLI auth | ⚠️ Binary setup | ❌ In-code schema |
 | **`.env.example` Auto-Sync & Safe Masking** | ✅ **Automated** | ❌ No | ❌ No | ❌ No | ❌ No |
+| **Interactive TUI Fix Wizard (`sync -i`)** | ✅ **Built-in** | ❌ No | ❌ No | ❌ No | ❌ No |
+| **Client-Side Secret Leak Guard (Next.js/Vite)** | ✅ **Built-in** | ❌ No | ❌ No | ❌ No | ❌ No |
 | **Code Reference Scanner** | ✅ **JS/TS (AST) + Py/Go/Rust/PHP/Ruby** | ❌ No | ❌ No | ❌ Regex in git | ❌ TS/JS only |
 | **Semantic Type Validation (`port`, `cron`, `duration`, `semver`)** | ✅ **16+ Types** | ❌ Strings only | ❌ Strings only | ❌ No | ✅ In-code |
 | **Curated Secret Leaks & Shannon Entropy** | ✅ **Built-in (0–100 Confidence)** | ❌ No | ❌ No | ✅ Built-in | ❌ No |
 | **Git History Scanner (`--scan-history`)** | ✅ **Built-in** | ❌ No | ❌ No | ✅ Built-in | ❌ No |
+| **Infrastructure Exporter (K8s, Compose, TF, Helm)** | ✅ **Built-in (`export`)** | ❌ No | ⚠️ SaaS only | ❌ No | ❌ No |
+| **Vault Provider Bridge (Doppler, Infisical, AWS, Vault)** | ✅ **Built-in (`pull`)** | ❌ No | ⚠️ Proprietary | ❌ No | ❌ No |
 | **Monorepo Workspaces Mode (`--workspaces`)** | ✅ **Built-in** | ❌ No | ❌ No | ⚠️ Custom scripts | ❌ Manual |
 | **SARIF 2.1.0 GitHub Code Scanning Output** | ✅ **Built-in** | ❌ No | ❌ No | ✅ Built-in | ❌ No |
 | **1-Click Git Pre-Commit Hook (Native & Husky)** | ✅ **Built-in** | ❌ No | ❌ No | ⚠️ Custom setup | ❌ No |
@@ -54,11 +58,10 @@ Managing environment variables in modern software stacks usually requires balanc
 
 ## 🔍 Technical Architecture & Parser Transparency
 
-In software tooling, honesty about parsing architecture is critical:
-
 1. **`.env` and `.env.example` Files**: Parsed into a complete, lossless **Abstract Syntax Tree (`EnvFileAst`)** preserving inline comments, multiline quoted values, export prefixes, blank lines, and `@type` schema annotations.
 2. **JavaScript & TypeScript (`.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`)**: Parsed via the **TypeScript Compiler API (`ts.createSourceFile`)**. Extracts property accesses (`process.env.X`, `import.meta.env.X`, `Bun.env.X`, `Deno.env.get`), object destructuring (`const { PORT, DB_URL: renamed = 'default' } = process.env`), and eliminates false positives in comments, template literal expressions, and string literals.
-3. **Go, Python, Rust, PHP, Ruby, and Dockerfiles**: Scanned using **tokenized, comment-stripping scanners** with language-specific heuristics. This ensures zero heavy native compilation dependencies (`node-gyp`, platform-specific native binaries) while delivering sub-millisecond execution speeds.
+3. **Client-Side Secret Exposure Interceptor**: Detects client components in Next.js (`'use client'`, `components/`), Vite (`src/`), Remix, and Astro. Verifies that private backend variables (`DATABASE_URL`, `STRIPE_SECRET_KEY`, `JWT_SECRET`) without public prefixes (`NEXT_PUBLIC_`, `VITE_`) are never referenced in client-side bundles.
+4. **Go, Python, Rust, PHP, Ruby, and Dockerfiles**: Scanned using **tokenized, comment-stripping scanners** with language-specific heuristics. This ensures zero heavy native compilation dependencies (`node-gyp`, platform-specific native binaries) while delivering sub-millisecond execution speeds.
 
 ---
 
@@ -94,7 +97,7 @@ npx envguard hook install
 
 ---
 
-## 🛠️ CLI Commands & Flags
+## 🛠️ CLI Commands & Workflows
 
 ### `envguard check` (Default Command)
 Performs a complete scan across codebase references, `.env`, and `.env.example`:
@@ -121,6 +124,7 @@ npx envguard --workspaces
 # Formatted output for CI/CD pipelines
 npx envguard --format github
 npx envguard --format sarif > envguard.sarif
+npx envguard --format pr-comment
 npx envguard --format json
 ```
 
@@ -131,8 +135,49 @@ Automatically creates or updates `.env.example` based on project source code and
 # Update .env.example with missing variables
 npx envguard sync
 
+# Interactive TUI Wizard: choose actions step-by-step
+npx envguard sync --interactive
+
 # Prune obsolete/stale variables no longer referenced anywhere
 npx envguard sync --prune
+```
+
+### `envguard export`
+Export environment variables to Kubernetes Secret, Docker Compose, Terraform, Helm, or JSON Schema:
+
+```bash
+# Export to Kubernetes Secret YAML
+npx envguard export --format k8s-secret --name app-secrets --output k8s-secret.yaml
+
+# Export to Docker Compose environment block
+npx envguard export --format docker-compose --service api
+
+# Export to Terraform .tfvars
+npx envguard export --format terraform --output terraform.tfvars
+
+# Export to JSON Schema
+npx envguard export --format json-schema --output .envguard.schema.json
+```
+
+### `envguard pull`
+Pull secrets from supported Cloud Secret Managers CLI:
+
+```bash
+# Pull from Doppler
+npx envguard pull --provider doppler --project my-project --config dev
+
+# Pull from Infisical
+npx envguard pull --provider infisical --config staging
+
+# Pull from AWS Secrets Manager
+npx envguard pull --provider aws --vault-secret-id arn:aws:secretsmanager:...
+```
+
+### `envguard vscode`
+Configure VS Code file nesting (`.env.*` grouped under `.env`), schema association, and syntax highlighting recommendations:
+
+```bash
+npx envguard vscode
 ```
 
 ### `envguard gen-types` (or `envguard types`)
@@ -168,26 +213,6 @@ EnvGuard combines curated signature matching with Shannon entropy analysis and c
 
 ### Negative Test Corpus:
 Tested against high-entropy non-secrets (Base64 data URIs, UUIDs, Git commit SHA hashes, Webpack bundle hashes, mock JWTs) with a **verified 0% false-positive rate** in CI.
-
-### Ignoring False Positives:
-1. **`.envguardignore` File**:
-   ```gitignore
-   # File patterns
-   tests/fixtures/**
-   
-   # Specific keys
-   key:MY_OPTIONAL_SECRET
-   
-   # Specific rule IDs
-   rule:high-entropy-secret
-   ```
-2. **Inline Directives**:
-   ```ts
-   // envguard-ignore-next-line
-   const testToken = "sk-ant-api03-abcdef1234567890abcdef1234567890abcdef1234567890";
-   
-   const safeKey = "AKIAIOSFODNN7EXAMPLE"; // envguard-ignore
-   ```
 
 ---
 
@@ -227,29 +252,11 @@ ADMIN_EMAIL=admin@example.com
 APP_SLUG=my-app-service
 ```
 
-### Supported Types Reference:
-| Type | Description | Example Values |
-|---|---|---|
-| `port` | Valid TCP port number | `3000`, `8080`, `5432` (1–65535) |
-| `duration` | Human-readable time duration | `30s`, `5m`, `1h`, `2d`, `500ms`, `1w` |
-| `cron` | 5-part cron expression or macro | `0 0 * * *`, `*/15 * * * *`, `@daily` |
-| `semver` | Semantic version string | `1.0.0`, `v2.1.3`, `0.1.0-beta.1` |
-| `hostname` | Valid RFC 1123 hostname | `localhost`, `api.example.com` |
-| `boolean` | Boolean flag | `true`, `false`, `1`, `0` |
-| `url` | HTTP, WS, or database URI | `https://api.example.com`, `postgresql://...` |
-| `email` | Standard email address | `user@example.com` |
-| `ip` | IPv4 or IPv6 address | `127.0.0.1`, `::1` |
-| `json` | Valid JSON object or array | `{"key": "value"}`, `[1, 2, 3]` |
-| `uuid` | RFC 4122 UUID | `f47ac10b-58cc-4372-a567-0e02b2c3d479` |
-| `base64` | Base64 encoded payload | `c29tZV9zYWZlX2Jhc2U2NF9kYXRh` |
-| `enum(...)` | Strict set of allowed values | `@type enum(dev, staging, prod)` |
-| `regex(...)` | Custom regex pattern | `@type regex(^[a-z0-9-]+$)` |
-
 ---
 
 ## 🚀 CI/CD Integrations
 
-### GitHub Actions (Composite Action & Code Scanning)
+### GitHub Actions (Composite Action, Step Summary & Code Scanning)
 
 ```yaml
 name: Security & Environment Check
@@ -286,46 +293,12 @@ jobs:
 ```
 
 ### Husky & lint-staged
-Add to `package.json`:
 ```json
 {
   "lint-staged": {
     "*": "npx @latryee/envguard --staged --strict"
   }
 }
-```
-
-### GitLab CI (`.gitlab-ci.yml`)
-```yaml
-envguard:
-  image: node:20
-  script:
-    - npx @latryee/envguard --strict
-```
-
-### CircleCI (`.circleci/config.yml`)
-```yaml
-version: 2.1
-jobs:
-  validate-env:
-    docker:
-      - image: cimg/node:20.0
-    steps:
-      - checkout
-      - run:
-          name: Run EnvGuard
-          command: npx @latryee/envguard --strict
-```
-
-### Bitbucket Pipelines (`bitbucket-pipelines.yml`)
-```yaml
-pipelines:
-  default:
-    - step:
-        name: EnvGuard Check
-        image: node:20
-        script:
-          - npx @latryee/envguard --strict
 ```
 
 ---
@@ -337,11 +310,11 @@ Measured on Node.js v22 across realistic multi-module codebase fixtures (`npm ru
 | Workload Tier | Source Files | Variables / References | Average Execution Time |
 |:---|:---:|:---:|:---:|
 | **Small Project** | 25 files | 100 references | **~16 ms** |
-| **Medium Project** | 250 files | 1,000 references | **~114 ms** |
-| **Large Project** | 1,000 files | 4,000 references | **~430 ms** |
+| **Medium Project** | 250 files | 1,000 references | **~115 ms** |
+| **Large Project** | 1,000 files | 4,000 references | **~440 ms** |
 
 - **Zero Heavy Native Dependencies**: Pure TypeScript / Node.js ESM.
-- **Thorough Test Suite**: 117 unit & integration tests covering AST parsing, multi-language scanning, type validation, entropy scoring, monorepos, and SARIF generation with enforced coverage thresholds.
+- **Comprehensive Test Suite**: 139 unit & integration tests across 27 test files covering AST parsing, client leak detection, vault exporters, monorepos, and SARIF generation with enforced coverage thresholds.
 
 ---
 

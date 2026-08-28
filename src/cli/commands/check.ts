@@ -8,6 +8,7 @@ import { renderTerminalReport } from '../../reporters/terminal-reporter.js';
 import { renderJsonReport } from '../../reporters/json-reporter.js';
 import { renderGitHubReport } from '../../reporters/github-reporter.js';
 import { renderSarifReport } from '../../reporters/sarif-reporter.js';
+import { renderPrCommentReport } from '../../reporters/pr-comment-reporter.js';
 import { getStagedFileContent, getStagedFiles, isGitRepository, scanGitHistory } from '../../core/git/git-utils.js';
 import { getBanner } from '../ui/banners.js';
 import { loadConfig } from '../../core/config/config-loader.js';
@@ -17,7 +18,7 @@ export interface CheckCommandOptions {
   env?: string;
   example?: string;
   strict?: boolean;
-  format?: 'terminal' | 'json' | 'github' | 'sarif';
+  format?: 'terminal' | 'json' | 'github' | 'sarif' | 'pr-comment' | 'summary';
   quiet?: boolean;
   verbose?: boolean;
   staged?: boolean;
@@ -188,6 +189,8 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
     console.log(renderGitHubReport(diffResult));
   } else if (format === 'sarif') {
     console.log(renderSarifReport(diffResult));
+  } else if (format === 'pr-comment' || format === 'summary') {
+    console.log(renderPrCommentReport(diffResult));
   } else {
     console.log(renderTerminalReport(diffResult, { verbose: options.verbose }));
   }
