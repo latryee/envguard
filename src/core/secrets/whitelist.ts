@@ -66,6 +66,8 @@ export function isSafePlaceholder(value: string): boolean {
     lower.includes('insert_') ||
     lower.includes('change_me') ||
     lower.includes('example.com') ||
+    lower.includes('localhost') ||
+    lower.includes('127.0.0.1') ||
     lower.includes('placeholder')
   ) {
     return true;

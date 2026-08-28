@@ -12,7 +12,7 @@
   <a href="https://github.com/latryee/envguard/actions"><img src="https://img.shields.io/github/actions/workflow/status/latryee/envguard/ci.yml?branch=main&style=flat-square" alt="Build Status" /></a>
   <a href="https://github.com/latryee/envguard/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="License" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/language-TypeScript-blue.svg?style=flat-square" alt="TypeScript" /></a>
-  <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/tests-60%2F60%20passing-brightgreen.svg?style=flat-square" alt="Tests" /></a>
+  <a href="https://vitest.dev/"><img src="https://img.shields.io/badge/tests-76%2F76%20passing-brightgreen.svg?style=flat-square" alt="Tests" /></a>
   <a href="#-competitive-matrix"><img src="https://img.shields.io/badge/zero-cloud%20dependency-emerald.svg?style=flat-square" alt="Zero Cloud" /></a>
 </p>
 
@@ -206,8 +206,11 @@ Create `envguard.config.json` or add an `"envguard"` section to `package.json`:
   "exampleFile": ".env.example",
   "typesFile": "src/types/env.d.ts",
   "strict": false,
-  "allowHighEntropy": false,
-  "entropyThreshold": 4.4,
+  "secretDetection": {
+    "entropyThreshold": 4.3,
+    "minLength": 20,
+    "allowHighEntropy": false
+  },
   "ignoredKeys": ["MY_OPTIONAL_LOCAL_VAR"],
   "ignoreGlobs": ["tests/fixtures/**"]
 }

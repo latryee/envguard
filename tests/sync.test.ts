@@ -72,4 +72,56 @@ DEBUG=true
     const updated = fs.readFileSync(exampleFile, 'utf8');
     expect(updated).not.toContain('OLD_OBSOLETE_KEY');
   });
+
+  it('guarantees sync output for detected secrets is always a generic placeholder and never derived from real values', () => {
+    const envFile = path.join(tempDir, '.env');
+    const exampleFile = path.join(tempDir, '.env.example');
+
+    const realSecrets = {
+      STRIPE_SECRET_KEY: 'sk_live_99887766554433221100aabbccddeeff',
+      ANTHROPIC_API_KEY: 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890',
+      AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
+      AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+      GITLAB_TOKEN: 'glpat-0123456789abcdefghij',
+      NPM_TOKEN: 'npm_0123456789abcdefghijklmnopqrstuv',
+      DISCORD_BOT_TOKEN: 'MTIzNDU2Nzg5MDEyMzQ1Njc4OTA.ABCDEF.1234567890abcdefghijklmnopqrstuvwx',
+      HUGGINGFACE_TOKEN: 'hf_0123456789abcdefghijklmnopqrstuvwxyz12',
+      CUSTOM_SECRET: 'Uniq$eSecretVal9988!@#RandomEntropyToken9102'
+    };
+
+    const envLines = Object.entries(realSecrets)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n');
+
+    fs.writeFileSync(envFile, envLines);
+
+    syncEnvExample({
+      cwd: tempDir,
+      envPath: '.env',
+      examplePath: '.env.example'
+    });
+
+    const exampleContent = fs.readFileSync(exampleFile, 'utf8');
+
+    // 1. None of the real secrets (or their non-trivial substrings) should appear in .env.example
+    for (const [key, secret] of Object.entries(realSecrets)) {
+      if (key === 'AWS_ACCESS_KEY_ID' || key === 'AWS_SECRET_ACCESS_KEY') {
+        // AWS documentation dummy example values
+        continue;
+      }
+      expect(exampleContent).not.toContain(secret);
+      // Ensure no truncated slice (first 10 chars) appears
+      const prefix = secret.slice(0, 10);
+      expect(exampleContent).not.toContain(prefix);
+    }
+
+    // 2. All generated values must be clean generic placeholders
+    expect(exampleContent).toContain('STRIPE_SECRET_KEY=sk_test_your_stripe_key_here');
+    expect(exampleContent).toContain('ANTHROPIC_API_KEY=your_anthropic_api_key_here');
+    expect(exampleContent).toContain('GITLAB_TOKEN=your_gitlab_token_here');
+    expect(exampleContent).toContain('NPM_TOKEN=your_npm_token_here');
+    expect(exampleContent).toContain('DISCORD_BOT_TOKEN=your_discord_bot_token_here');
+    expect(exampleContent).toContain('HUGGINGFACE_TOKEN=your_huggingface_token_here');
+    expect(exampleContent).toContain('CUSTOM_SECRET=your_custom_secret_here');
+  });
 });

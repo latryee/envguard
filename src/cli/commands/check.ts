@@ -91,7 +91,8 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
     exampleAst,
     codeKeys: scanResult.uniqueKeys,
     codeReferences: scanResult.keyLocations,
-    sourceSecrets: scanResult.secretLeaks
+    sourceSecrets: scanResult.secretLeaks,
+    secretDetection: config.secretDetection
   });
 
 

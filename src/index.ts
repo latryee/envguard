@@ -53,8 +53,9 @@ export type { HookInstallResult } from './core/git/hooks.js';
 
 // Configuration
 export { loadConfig } from './core/config/config-loader.js';
+export type { LoadedConfig } from './core/config/config-loader.js';
 export { DEFAULT_CONFIG } from './core/config/defaults.js';
-export type { EnvGuardConfig } from './core/config/defaults.js';
+export type { EnvGuardConfig, SecretDetectionConfig } from './core/config/defaults.js';
 
 // Reporters
 export { renderTerminalReport } from './reporters/terminal-reporter.js';

@@ -89,14 +89,14 @@ export const SECRET_RULES: SecretRule[] = [
     description: 'Exposed Google Cloud / Maps / Firebase API Key.',
     remediation: 'Restrict or rotate key in Google Cloud Console Credentials.'
   },
-  // Private Key Blocks
+  // Private Key Blocks (PKCS#1, PKCS#8, OpenSSH, PGP)
   {
     id: 'private-key',
     name: 'Private Encryption Key',
     category: 'crypto',
     severity: 'critical',
-    regex: /-----BEGIN (?:RSA|DSA|EC|OPENSSH|PGP) PRIVATE KEY-----/g,
-    description: 'Unencrypted private cryptographic key block.',
+    regex: /-----BEGIN (?:(?:RSA|DSA|EC|OPENSSH|PGP|ENCRYPTED) )?PRIVATE KEY(?: BLOCK)?-----/g,
+    description: 'Unencrypted or encrypted private cryptographic key block.',
     remediation: 'Never commit private keys to version control. Store as encrypted secrets or file references.'
   },
   // SendGrid API Key
@@ -118,5 +118,75 @@ export const SECRET_RULES: SecretRule[] = [
     regex: /\b(eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,})\b/g,
     description: 'Hardcoded JWT bearer token or session token.',
     remediation: 'Use dynamic token exchange instead of hardcoding JWTs.'
+  },
+  // GitLab Access Token
+  {
+    id: 'gitlab-pat',
+    name: 'GitLab Access Token',
+    category: 'vcs',
+    severity: 'critical',
+    regex: /\b((?:glpat|glcbt|glptt)-[0-9a-zA-Z_-]{20,26})\b/g,
+    description: 'Exposed GitLab Personal, Pipeline, or Trigger Access Token.',
+    remediation: 'Revoke token in GitLab -> User Settings -> Access Tokens.'
+  },
+  // npm Access Token
+  {
+    id: 'npm-token',
+    name: 'npm Access Token',
+    category: 'auth',
+    severity: 'critical',
+    regex: /\b(npm_[a-zA-Z0-9]{36})\b/g,
+    description: 'Exposed npm registry publishing or automation token.',
+    remediation: 'Revoke and regenerate the token on npmjs.com/settings/tokens.'
+  },
+  // Slack Webhook URL
+  {
+    id: 'slack-webhook',
+    name: 'Slack Incoming Webhook URL',
+    category: 'auth',
+    severity: 'high',
+    regex: /https:\/\/hooks\.slack\.com\/services\/T[a-zA-Z0-9_]{8,12}\/B[a-zA-Z0-9_]{8,12}\/[a-zA-Z0-9_]{24}/g,
+    description: 'Exposed Slack Incoming Webhook endpoint URL.',
+    remediation: 'Regenerate or remove the webhook in your Slack App Incoming Webhooks configuration.'
+  },
+  // Discord Bot Token
+  {
+    id: 'discord-bot-token',
+    name: 'Discord Bot Token',
+    category: 'auth',
+    severity: 'critical',
+    regex: /\b([MN][A-Za-z\d]{23,26}\.[\w-]{6}\.[\w-]{27,38})\b/g,
+    description: 'Exposed Discord Bot Token.',
+    remediation: 'Regenerate your bot token in Discord Developer Portal.'
+  },
+  // Hugging Face Access Token
+  {
+    id: 'huggingface-token',
+    name: 'Hugging Face Access Token',
+    category: 'ai',
+    severity: 'high',
+    regex: /\b(hf_[a-zA-Z0-9]{34,40})\b/g,
+    description: 'Exposed Hugging Face API / User Access Token.',
+    remediation: 'Revoke and regenerate your token on huggingface.co/settings/tokens.'
+  },
+  // Twilio API Key
+  {
+    id: 'twilio-api-key',
+    name: 'Twilio API Key',
+    category: 'auth',
+    severity: 'high',
+    regex: /\b(SK[0-9a-fA-F]{32})\b/g,
+    description: 'Exposed Twilio API Key or Secret.',
+    remediation: 'Delete and recreate the API key in the Twilio Console.'
+  },
+  // Resend API Key
+  {
+    id: 'resend-api-key',
+    name: 'Resend API Key',
+    category: 'auth',
+    severity: 'high',
+    regex: /\b(re_[a-zA-Z0-9]{24,36})\b/g,
+    description: 'Exposed Resend transactional email API key.',
+    remediation: 'Rotate the API key in the Resend dashboard.'
   }
 ];

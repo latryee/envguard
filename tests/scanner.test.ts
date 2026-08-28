@@ -44,7 +44,59 @@ const denoVal = Deno.env.get('DENO_VAR');
     expect(result.uniqueKeys.has('DENO_VAR')).toBe(true);
   });
 
-  it('scans destructuring patterns from process.env and import.meta.env', async () => {
+  it('scans bracket notation with various quote styles and whitespace', async () => {
+    const srcDir = path.join(tempDir, 'src');
+    fs.mkdirSync(srcDir, { recursive: true });
+
+    fs.writeFileSync(
+      path.join(srcDir, 'brackets.ts'),
+      `
+const single = process.env['SINGLE_QUOTE_KEY'];
+const double = process.env["DOUBLE_QUOTE_KEY"];
+const backtick = process.env[\`BACKTICK_KEY\`];
+const spaced = process.env[ 'SPACED_KEY' ];
+const optChain = process.env?.['OPTIONAL_BRACKET_KEY'];
+const viteBracket = import.meta.env[ 'VITE_BRACKET_KEY' ];
+const bunBracket = Bun.env[ "BUN_BRACKET_KEY" ];
+`
+    );
+
+    const result = await scanCodebase({ cwd: tempDir });
+    expect(result.uniqueKeys.has('SINGLE_QUOTE_KEY')).toBe(true);
+    expect(result.uniqueKeys.has('DOUBLE_QUOTE_KEY')).toBe(true);
+    expect(result.uniqueKeys.has('BACKTICK_KEY')).toBe(true);
+    expect(result.uniqueKeys.has('SPACED_KEY')).toBe(true);
+    expect(result.uniqueKeys.has('OPTIONAL_BRACKET_KEY')).toBe(true);
+    expect(result.uniqueKeys.has('VITE_BRACKET_KEY')).toBe(true);
+    expect(result.uniqueKeys.has('BUN_BRACKET_KEY')).toBe(true);
+  });
+
+  it('scans template literal interpolations correctly across single and multi-line strings', async () => {
+    const srcDir = path.join(tempDir, 'src');
+    fs.mkdirSync(srcDir, { recursive: true });
+
+    fs.writeFileSync(
+      path.join(srcDir, 'template.ts'),
+      `
+const url = \`https://\${process.env.API_HOST}:\${process.env['API_PORT']}/v1\`;
+const auth = \`Bearer \${process.env.AUTH_TOKEN}\`;
+const multilineQuery = \`
+  SELECT * FROM users
+  WHERE api_key = '\${process.env.DB_API_KEY}'
+\`;
+const viteUrl = \`\${import.meta.env.VITE_SERVER_URL}/api\`;
+`
+    );
+
+    const result = await scanCodebase({ cwd: tempDir });
+    expect(result.uniqueKeys.has('API_HOST')).toBe(true);
+    expect(result.uniqueKeys.has('API_PORT')).toBe(true);
+    expect(result.uniqueKeys.has('AUTH_TOKEN')).toBe(true);
+    expect(result.uniqueKeys.has('DB_API_KEY')).toBe(true);
+    expect(result.uniqueKeys.has('VITE_SERVER_URL')).toBe(true);
+  });
+
+  it('scans single-line and multiline destructuring from process.env, import.meta.env, and Bun.env', async () => {
     const srcDir = path.join(tempDir, 'src');
     fs.mkdirSync(srcDir, { recursive: true });
 
@@ -54,6 +106,12 @@ const denoVal = Deno.env.get('DENO_VAR');
 const { DB_HOST, DB_PASS: password, TIMEOUT = 5000 } = process.env;
 const { VITE_API_ENDPOINT, VITE_APP_TITLE } = import.meta.env;
 const { BUN_FEATURE_FLAG } = Bun.env;
+
+const {
+  MULTILINE_HOST,
+  MULTILINE_PORT: port = 8080,
+  MULTILINE_SECRET
+} = process.env;
 `
     );
 
@@ -64,9 +122,12 @@ const { BUN_FEATURE_FLAG } = Bun.env;
     expect(result.uniqueKeys.has('VITE_API_ENDPOINT')).toBe(true);
     expect(result.uniqueKeys.has('VITE_APP_TITLE')).toBe(true);
     expect(result.uniqueKeys.has('BUN_FEATURE_FLAG')).toBe(true);
+    expect(result.uniqueKeys.has('MULTILINE_HOST')).toBe(true);
+    expect(result.uniqueKeys.has('MULTILINE_PORT')).toBe(true);
+    expect(result.uniqueKeys.has('MULTILINE_SECRET')).toBe(true);
   });
 
-  it('ignores commented-out lines to avoid false positives', async () => {
+  it('ignores process.env references inside // and /* */ comments (inline, block, and multiline)', async () => {
     const srcDir = path.join(tempDir, 'src');
     fs.mkdirSync(srcDir, { recursive: true });
 
@@ -75,14 +136,29 @@ const { BUN_FEATURE_FLAG } = Bun.env;
       `
 // const oldPort = process.env.COMMENTED_KEY;
 /* const another = process.env.BLOCK_COMMENT_KEY; */
-const active = process.env.ACTIVE_KEY;
+const realKey = process.env.ACTIVE_KEY; // inline comment: process.env.INLINE_COMMENT_KEY
+const inlineBlock = /* process.env.INLINE_BLOCK_KEY */ process.env.ANOTHER_ACTIVE_KEY;
+
+/*
+  Multiline comment block:
+  process.env.MULTILINE_COMMENT_KEY
+  process.env['MULTILINE_BRACKET_COMMENT_KEY']
+*/
+
+// const { DEST_IN_COMMENT } = process.env;
 `
     );
 
     const result = await scanCodebase({ cwd: tempDir });
     expect(result.uniqueKeys.has('ACTIVE_KEY')).toBe(true);
+    expect(result.uniqueKeys.has('ANOTHER_ACTIVE_KEY')).toBe(true);
     expect(result.uniqueKeys.has('COMMENTED_KEY')).toBe(false);
     expect(result.uniqueKeys.has('BLOCK_COMMENT_KEY')).toBe(false);
+    expect(result.uniqueKeys.has('INLINE_COMMENT_KEY')).toBe(false);
+    expect(result.uniqueKeys.has('INLINE_BLOCK_KEY')).toBe(false);
+    expect(result.uniqueKeys.has('MULTILINE_COMMENT_KEY')).toBe(false);
+    expect(result.uniqueKeys.has('MULTILINE_BRACKET_COMMENT_KEY')).toBe(false);
+    expect(result.uniqueKeys.has('DEST_IN_COMMENT')).toBe(false);
   });
 
   it('scans Python, Go, Rust, PHP, Ruby, and Docker references', async () => {

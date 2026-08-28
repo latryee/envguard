@@ -80,13 +80,65 @@ describe('Secret Leak & Shannon Entropy Detection Engine', () => {
     expect(jwt[0].ruleId).toBe('jwt-token');
   });
 
-  it('detects Private Key Blocks', () => {
-    const privKey = `-----BEGIN RSA PRIVATE KEY-----
+  it('detects Private Key Blocks (PKCS#1, PKCS#8, OpenSSH, PGP)', () => {
+    const rsaKey = `-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEA0Y+u4n...
 -----END RSA PRIVATE KEY-----`;
-    const findings = detectSecretsInValue(privKey, 'PRIVATE_KEY');
-    expect(findings.length).toBeGreaterThan(0);
-    expect(findings[0].ruleId).toBe('private-key');
+    const rsa = detectSecretsInValue(rsaKey, 'RSA_KEY');
+    expect(rsa.length).toBeGreaterThan(0);
+    expect(rsa[0].ruleId).toBe('private-key');
+
+    const pkcs8Key = `-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC6...
+-----END PRIVATE KEY-----`;
+    const pkcs8 = detectSecretsInValue(pkcs8Key, 'PKCS8_KEY');
+    expect(pkcs8.length).toBeGreaterThan(0);
+    expect(pkcs8[0].ruleId).toBe('private-key');
+
+    const pgpKey = `-----BEGIN PGP PRIVATE KEY BLOCK-----
+Version: GnuPG v2
+lQOYBF2...
+-----END PGP PRIVATE KEY BLOCK-----`;
+    const pgp = detectSecretsInValue(pgpKey, 'PGP_KEY');
+    expect(pgp.length).toBeGreaterThan(0);
+    expect(pgp[0].ruleId).toBe('private-key');
+  });
+
+  it('detects GitLab, npm, Slack Webhook, Discord, HuggingFace, Twilio, and Resend secrets', () => {
+    const gitlabSample = ['glpat-', '1234567890abcdefghij'].join('');
+    const gitlab = detectSecretsInValue(gitlabSample, 'GITLAB_TOKEN');
+    expect(gitlab).toHaveLength(1);
+    expect(gitlab[0].ruleId).toBe('gitlab-pat');
+
+    const npmSample = ['npm_', '1234567890abcdefghijklmnopqrstuvwxyz'].join('');
+    const npm = detectSecretsInValue(npmSample, 'NPM_TOKEN');
+    expect(npm).toHaveLength(1);
+    expect(npm[0].ruleId).toBe('npm-token');
+
+    const slackWebhookSample = 'https://hooks.slack.com/services/T12345678/B12345678/123456789012345678901234';
+    const slackWh = detectSecretsInValue(slackWebhookSample, 'SLACK_WEBHOOK');
+    expect(slackWh).toHaveLength(1);
+    expect(slackWh[0].ruleId).toBe('slack-webhook');
+
+    const discordSample = ['MTIzNDU2Nzg5MDEyMzQ1Njc4OTA', 'ABCDEF', '1234567890abcdefghijklmnopqrstuvwx'].join('.');
+    const discord = detectSecretsInValue(discordSample, 'DISCORD_TOKEN');
+    expect(discord).toHaveLength(1);
+    expect(discord[0].ruleId).toBe('discord-bot-token');
+
+    const hfSample = ['hf_', '1234567890abcdefghijklmnopqrstuvwxyz12'].join('');
+    const hf = detectSecretsInValue(hfSample, 'HF_TOKEN');
+    expect(hf).toHaveLength(1);
+    expect(hf[0].ruleId).toBe('huggingface-token');
+
+    const twilioSample = ['SK', '1234567890abcdef1234567890abcdef'].join('');
+    const twilio = detectSecretsInValue(twilioSample, 'TWILIO_KEY');
+    expect(twilio).toHaveLength(1);
+    expect(twilio[0].ruleId).toBe('twilio-api-key');
+
+    const resendSample = ['re_', '1234567890abcdefghijklmnopqr'].join('');
+    const resend = detectSecretsInValue(resendSample, 'RESEND_KEY');
+    expect(resend).toHaveLength(1);
+    expect(resend[0].ruleId).toBe('resend-api-key');
   });
 
   it('detects unclassified high-entropy random secrets', () => {
@@ -94,6 +146,31 @@ MIIEowIBAAKCAQEA0Y+u4n...
     const findings = detectSecretsInValue(randomSecret, 'MY_CUSTOM_SECRET');
     expect(findings.length).toBeGreaterThan(0);
     expect(findings[0].ruleId).toBe('high-entropy-secret');
+  });
+
+  it('allows tuning entropy threshold and minLength for borderline strings', () => {
+    // String with entropy around 4.39 and length 22
+    const borderlineString = 'a1B2c3D4e5F6g7H8i9J0kL';
+    const entropy = calculateShannonEntropy(borderlineString);
+    expect(entropy).toBeGreaterThan(4.3);
+    expect(entropy).toBeLessThan(4.5);
+
+    // Default threshold (4.3) detects it
+    const defaultFindings = detectSecretsInValue(borderlineString, 'BORDERLINE_KEY');
+    expect(defaultFindings).toHaveLength(1);
+    expect(defaultFindings[0].ruleId).toBe('high-entropy-secret');
+
+    // Custom higher threshold (4.5) avoids false positive on borderline string
+    const relaxedFindings = detectSecretsInValue(borderlineString, 'BORDERLINE_KEY', undefined, {
+      entropyThreshold: 4.5
+    });
+    expect(relaxedFindings).toHaveLength(0);
+
+    // Custom higher minLength (30) avoids false positive on borderline string
+    const minLengthFindings = detectSecretsInValue(borderlineString, 'BORDERLINE_KEY', undefined, {
+      minLength: 30
+    });
+    expect(minLengthFindings).toHaveLength(0);
   });
 
   it('does NOT trigger false positives on UUIDs or safe dummy placeholders', () => {

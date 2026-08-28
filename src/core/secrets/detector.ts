@@ -20,6 +20,7 @@ export interface DetectSecretsOptions {
   file?: string;
   allowHighEntropy?: boolean;
   entropyThreshold?: number;
+  minLength?: number;
 }
 
 /**
@@ -74,8 +75,9 @@ export function detectSecretsInValue(
 
   // 2. High Shannon entropy check for arbitrary high-randomness tokens
   if (findings.length === 0 && !options.allowHighEntropy) {
-    const threshold = options.entropyThreshold || 4.4;
-    if (isHighEntropyString(value, threshold, 24)) {
+    const threshold = options.entropyThreshold ?? 4.3;
+    const minLength = options.minLength ?? 20;
+    if (isHighEntropyString(value, threshold, minLength)) {
       const entropy = Number(calculateShannonEntropy(value).toFixed(2));
       findings.push({
         ruleId: 'high-entropy-secret',

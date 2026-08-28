@@ -1,9 +1,43 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_CONFIG, EnvGuardConfig } from './defaults.js';
+import { DEFAULT_CONFIG, EnvGuardConfig, SecretDetectionConfig } from './defaults.js';
 
-export function loadConfig(cwd = process.cwd()): Required<EnvGuardConfig> {
-  const config = { ...DEFAULT_CONFIG };
+export type LoadedConfig = Required<Omit<EnvGuardConfig, 'secretDetection'>> & {
+  secretDetection: Required<SecretDetectionConfig>;
+};
+
+function mergeConfig(
+  base: LoadedConfig,
+  override: Partial<EnvGuardConfig>
+): LoadedConfig {
+  const secretDetection: Required<SecretDetectionConfig> = {
+    entropyThreshold:
+      override.secretDetection?.entropyThreshold ??
+      override.entropyThreshold ??
+      base.secretDetection.entropyThreshold,
+    minLength:
+      override.secretDetection?.minLength ??
+      base.secretDetection.minLength,
+    allowHighEntropy:
+      override.secretDetection?.allowHighEntropy ??
+      override.allowHighEntropy ??
+      base.secretDetection.allowHighEntropy
+  };
+
+  return {
+    ...base,
+    ...override,
+    entropyThreshold: secretDetection.entropyThreshold,
+    allowHighEntropy: secretDetection.allowHighEntropy,
+    secretDetection
+  };
+}
+
+export function loadConfig(cwd = process.cwd()): LoadedConfig {
+  let config: LoadedConfig = {
+    ...DEFAULT_CONFIG,
+    secretDetection: { ...DEFAULT_CONFIG.secretDetection }
+  };
 
   // 1. Check envguard.config.json or .envguardrc.json
   const jsonPaths = [
@@ -17,7 +51,8 @@ export function loadConfig(cwd = process.cwd()): Required<EnvGuardConfig> {
       try {
         const raw = fs.readFileSync(p, 'utf8');
         const parsed = JSON.parse(raw);
-        return Object.assign(config, parsed);
+        config = mergeConfig(config, parsed);
+        return config;
       } catch (err) {
         console.warn(
           `[envguard] Warning: Failed to parse configuration file "${p}": ${err instanceof Error ? err.message : String(err)}`
@@ -33,7 +68,8 @@ export function loadConfig(cwd = process.cwd()): Required<EnvGuardConfig> {
       const raw = fs.readFileSync(pkgPath, 'utf8');
       const pkg = JSON.parse(raw);
       if (pkg.envguard && typeof pkg.envguard === 'object') {
-        return Object.assign(config, pkg.envguard);
+        config = mergeConfig(config, pkg.envguard);
+        return config;
       }
     } catch (err) {
       console.warn(

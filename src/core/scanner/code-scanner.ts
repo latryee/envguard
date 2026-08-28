@@ -32,6 +32,244 @@ export interface ScanResult {
 }
 
 /**
+ * Strips comments from code content while preserving line breaks and column positions.
+ * Replaces comment characters with spaces so line and column numbers remain accurate.
+ */
+export function stripComments(content: string, language: CodeReference['language']): string {
+  const chars = content.split('');
+  const len = chars.length;
+  let i = 0;
+
+  if (
+    language === 'typescript' ||
+    language === 'javascript' ||
+    language === 'go' ||
+    language === 'rust' ||
+    language === 'php'
+  ) {
+    while (i < len) {
+      const char = chars[i];
+      const next = chars[i + 1];
+
+      // Single-line comment //
+      if (char === '/' && next === '/') {
+        chars[i] = ' ';
+        chars[i + 1] = ' ';
+        i += 2;
+        while (i < len && chars[i] !== '\n' && chars[i] !== '\r') {
+          chars[i] = ' ';
+          i++;
+        }
+        continue;
+      }
+
+      // Block comment /* ... */
+      if (char === '/' && next === '*') {
+        chars[i] = ' ';
+        chars[i + 1] = ' ';
+        i += 2;
+        while (i < len) {
+          if (chars[i] === '*' && chars[i + 1] === '/') {
+            chars[i] = ' ';
+            chars[i + 1] = ' ';
+            i += 2;
+            break;
+          }
+          if (chars[i] !== '\n' && chars[i] !== '\r') {
+            chars[i] = ' ';
+          }
+          i++;
+        }
+        continue;
+      }
+
+      // Single quote string '...'
+      if (char === "'") {
+        i++;
+        while (i < len && chars[i] !== "'") {
+          if (chars[i] === '\\') i++;
+          i++;
+        }
+        if (i < len) i++;
+        continue;
+      }
+
+      // Double quote string "..."
+      if (char === '"') {
+        i++;
+        while (i < len && chars[i] !== '"') {
+          if (chars[i] === '\\') i++;
+          i++;
+        }
+        if (i < len) i++;
+        continue;
+      }
+
+      // Template literal `...`
+      if (char === '`') {
+        i++;
+        while (i < len && chars[i] !== '`') {
+          if (chars[i] === '\\') {
+            i += 2;
+            continue;
+          }
+          if (chars[i] === '$' && chars[i + 1] === '{') {
+            // Enter expression inside template literal
+            i += 2;
+            let depth = 1;
+            while (i < len && depth > 0) {
+              if (chars[i] === '/' && chars[i + 1] === '/') {
+                chars[i] = ' ';
+                chars[i + 1] = ' ';
+                i += 2;
+                while (i < len && chars[i] !== '\n' && chars[i] !== '\r') {
+                  chars[i] = ' ';
+                  i++;
+                }
+                continue;
+              }
+              if (chars[i] === '/' && chars[i + 1] === '*') {
+                chars[i] = ' ';
+                chars[i + 1] = ' ';
+                i += 2;
+                while (i < len) {
+                  if (chars[i] === '*' && chars[i + 1] === '/') {
+                    chars[i] = ' ';
+                    chars[i + 1] = ' ';
+                    i += 2;
+                    break;
+                  }
+                  if (chars[i] !== '\n' && chars[i] !== '\r') {
+                    chars[i] = ' ';
+                  }
+                  i++;
+                }
+                continue;
+              }
+              if (chars[i] === "'") {
+                i++;
+                while (i < len && chars[i] !== "'") {
+                  if (chars[i] === '\\') i++;
+                  i++;
+                }
+                if (i < len) i++;
+                continue;
+              }
+              if (chars[i] === '"') {
+                i++;
+                while (i < len && chars[i] !== '"') {
+                  if (chars[i] === '\\') i++;
+                  i++;
+                }
+                if (i < len) i++;
+                continue;
+              }
+              if (chars[i] === '{') depth++;
+              else if (chars[i] === '}') depth--;
+              if (depth === 0) {
+                i++;
+                break;
+              }
+              i++;
+            }
+            continue;
+          }
+          i++;
+        }
+        if (i < len) i++;
+        continue;
+      }
+
+      // PHP # comment
+      if (language === 'php' && char === '#') {
+        chars[i] = ' ';
+        i++;
+        while (i < len && chars[i] !== '\n' && chars[i] !== '\r') {
+          chars[i] = ' ';
+          i++;
+        }
+        continue;
+      }
+
+      i++;
+    }
+  } else if (language === 'python' || language === 'ruby' || language === 'shell') {
+    while (i < len) {
+      const char = chars[i];
+
+      // Triple quoted strings in Python
+      if (language === 'python') {
+        const triple = chars.slice(i, i + 3).join('');
+        if (triple === '"""' || triple === "'''") {
+          i += 3;
+          while (i < len && chars.slice(i, i + 3).join('') !== triple) {
+            if (chars[i] === '\\') i++;
+            i++;
+          }
+          if (i < len) i += 3;
+          continue;
+        }
+      }
+
+      // Single quote
+      if (char === "'") {
+        i++;
+        while (i < len && chars[i] !== "'") {
+          if (chars[i] === '\\') i++;
+          i++;
+        }
+        if (i < len) i++;
+        continue;
+      }
+
+      // Double quote
+      if (char === '"') {
+        i++;
+        while (i < len && chars[i] !== '"') {
+          if (chars[i] === '\\') i++;
+          i++;
+        }
+        if (i < len) i++;
+        continue;
+      }
+
+      // Hash comment #
+      if (char === '#') {
+        chars[i] = ' ';
+        i++;
+        while (i < len && chars[i] !== '\n' && chars[i] !== '\r') {
+          chars[i] = ' ';
+          i++;
+        }
+        continue;
+      }
+
+      i++;
+    }
+  }
+
+  return chars.join('');
+}
+
+function getLineAndColumn(
+  content: string,
+  charIndex: number,
+  originalLines: string[]
+): { line: number; column: number; snippet: string } {
+  let line = 1;
+  let lastNewline = -1;
+  for (let i = 0; i < charIndex && i < content.length; i++) {
+    if (content[i] === '\n') {
+      line++;
+      lastNewline = i;
+    }
+  }
+  const column = charIndex - lastNewline;
+  const snippet = originalLines[line - 1] ? originalLines[line - 1].trim() : '';
+  return { line, column, snippet };
+}
+
+/**
  * Scans code files across supported programming languages to find all environment variable usages.
  */
 export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResult> {
@@ -106,8 +344,8 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
   const secretLeaks: SecretFinding[] = [];
   let scannedFilesCount = 0;
 
-  // JS/TS Destructuring Regex: const { A, B: renamed, C = default } = process.env
-  const jsDestructuringRegex = /(?:(?:const|let|var)\s*\{|(?:\(|^|\s)\{\s*)([^}]+)\}\s*=\s*(?:process\.env|import\.meta\.env|Bun\.env)\b/g;
+  // JS/TS Destructuring Regex (supports single-line and multiline): const { A, B: renamed, C = default } = process.env
+  const jsDestructuringRegex = /(?:(?:const|let|var)\s*\{|(?:\(|^|\s)\{\s*)([\s\S]*?)\}\s*(?::\s*[^=]+)?=\s*(?:process\.env|import\.meta\.env|Bun\.env)\b/g;
 
   for (const file of files) {
     const filename = path.basename(file);
@@ -158,60 +396,66 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
       continue;
     }
 
-    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-      const lineContent = lines[lineIdx];
-      const lineNum = lineIdx + 1;
-      const trimmedLine = lineContent.trim();
+    const strippedContent = stripComments(content, matchingLang.language);
+    const strippedLines = strippedContent.split(/\r?\n/);
 
-      // Skip empty lines or comment lines
-      if (
-        !trimmedLine ||
-        trimmedLine.startsWith('//') ||
-        trimmedLine.startsWith('/*') ||
-        trimmedLine.startsWith('*') ||
-        (trimmedLine.startsWith('#') && matchingLang.language !== 'docker') ||
-        trimmedLine.startsWith('--')
-      ) {
-        continue;
-      }
+    // Handle JS/TS destructuring (both single-line and multi-line)
+    if (matchingLang.language === 'typescript') {
+      jsDestructuringRegex.lastIndex = 0;
+      let dMatch: RegExpExecArray | null;
+      while ((dMatch = jsDestructuringRegex.exec(strippedContent)) !== null) {
+        const rawBlock = dMatch[1];
+        const blockStartIndex = dMatch.index + dMatch[0].indexOf(rawBlock);
+        const parts = rawBlock.split(',');
+        let currentOffset = 0;
 
-      // Handle JS/TS destructuring
-      if (matchingLang.language === 'typescript') {
-        jsDestructuringRegex.lastIndex = 0;
-        let dMatch: RegExpExecArray | null;
-        while ((dMatch = jsDestructuringRegex.exec(lineContent)) !== null) {
-          const rawBlock = dMatch[1];
-          const parts = rawBlock.split(',');
-          for (const rawPart of parts) {
-            const trimmedPart = rawPart.trim();
-            if (!trimmedPart) continue;
-            // Handle rename (A: b) or default assignment (A = 'default')
-            const varName = trimmedPart.split(/[:=]/)[0].trim();
-            if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(varName) && !ignoredKeys.has(varName)) {
-              const ref: CodeReference = {
-                key: varName,
-                file: path.relative(cwd, file).replace(/\\/g, '/'),
-                line: lineNum,
-                column: dMatch.index + 1,
-                snippet: lineContent.trim(),
-                language: 'typescript'
-              };
-              references.push(ref);
-              uniqueKeys.add(varName);
-              const existing = keyLocations.get(varName) || [];
-              existing.push(ref);
-              keyLocations.set(varName, existing);
-            }
+        for (const rawPart of parts) {
+          const partOffset = rawBlock.indexOf(rawPart, currentOffset);
+          currentOffset = partOffset + rawPart.length;
+
+          const trimmedPart = rawPart.trim();
+          if (!trimmedPart) continue;
+
+          // Handle rename (A: b) or default assignment (A = 'default')
+          const varName = trimmedPart.split(/[:=]/)[0].trim();
+          if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(varName) && !ignoredKeys.has(varName)) {
+            const varIndexInBlock = partOffset + rawPart.indexOf(varName);
+            const absCharIndex = blockStartIndex + varIndexInBlock;
+            const { line: varLine, column: varCol, snippet } = getLineAndColumn(strippedContent, absCharIndex, lines);
+
+            const ref: CodeReference = {
+              key: varName,
+              file: relFilePath,
+              line: varLine,
+              column: varCol,
+              snippet,
+              language: 'typescript'
+            };
+            references.push(ref);
+            uniqueKeys.add(varName);
+            const existing = keyLocations.get(varName) || [];
+            existing.push(ref);
+            keyLocations.set(varName, existing);
           }
         }
       }
+    }
+
+    // Handle standard property accesses / function calls line by line on stripped content
+    for (let lineIdx = 0; lineIdx < strippedLines.length; lineIdx++) {
+      const strippedLine = strippedLines[lineIdx];
+      const lineNum = lineIdx + 1;
+      const originalSnippet = lines[lineIdx] ? lines[lineIdx].trim() : '';
+
+      if (!strippedLine.trim()) {
+        continue;
+      }
 
       for (const regex of matchingLang.regexes) {
-        // Reset regex state
         regex.lastIndex = 0;
         let match: RegExpExecArray | null;
 
-        while ((match = regex.exec(lineContent)) !== null) {
+        while ((match = regex.exec(strippedLine)) !== null) {
           const varName = match[1];
           if (!varName || ignoredKeys.has(varName)) {
             continue;
@@ -220,10 +464,10 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
           const colNum = match.index + 1;
           const ref: CodeReference = {
             key: varName,
-            file: path.relative(cwd, file).replace(/\\/g, '/'),
+            file: relFilePath,
             line: lineNum,
             column: colNum,
-            snippet: lineContent.trim(),
+            snippet: originalSnippet,
             language: matchingLang.language
           };
 

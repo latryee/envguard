@@ -33,6 +33,11 @@ export function isHighEntropyString(str: string, threshold = 4.3, minLength = 20
   const clean = str.trim();
   if (clean.includes(' ') || clean.includes('\n')) return false;
 
+  // Filter out URLs and connection URIs
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(clean) || clean.includes('://')) {
+    return false;
+  }
+
   // Filter out standard UUIDs
   if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clean)) {
     return false;

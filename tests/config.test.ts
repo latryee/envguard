@@ -44,6 +44,23 @@ describe('Config Loader', () => {
     expect(config.ignoredKeys).toContain('CUSTOM_VAR');
   });
 
+  it('loads secretDetection configuration options from envguard.config.json', () => {
+    fs.writeFileSync(
+      path.join(tempDir, 'envguard.config.json'),
+      JSON.stringify({
+        secretDetection: {
+          entropyThreshold: 4.8,
+          minLength: 32
+        }
+      })
+    );
+
+    const config = loadConfig(tempDir);
+    expect(config.secretDetection.entropyThreshold).toBe(4.8);
+    expect(config.secretDetection.minLength).toBe(32);
+    expect(config.secretDetection.allowHighEntropy).toBe(false);
+  });
+
   it('loads configuration from package.json envguard section', () => {
     fs.writeFileSync(
       path.join(tempDir, 'package.json'),
@@ -51,7 +68,10 @@ describe('Config Loader', () => {
         name: 'my-app',
         envguard: {
           envFile: '.env.prod',
-          strict: true
+          strict: true,
+          secretDetection: {
+            entropyThreshold: 4.6
+          }
         }
       })
     );
@@ -59,6 +79,8 @@ describe('Config Loader', () => {
     const config = loadConfig(tempDir);
     expect(config.envFile).toBe('.env.prod');
     expect(config.strict).toBe(true);
+    expect(config.secretDetection.entropyThreshold).toBe(4.6);
+    expect(config.secretDetection.minLength).toBe(20);
   });
 
   it('warns on malformed JSON in envguard.config.json and falls back to defaults without throwing', () => {

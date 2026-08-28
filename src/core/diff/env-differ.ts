@@ -1,6 +1,7 @@
 import { EnvFileAst, EnvVariable } from '../parser/types.js';
 import { CodeReference } from '../scanner/patterns.js';
 import { SecretFinding, detectSecretsInValue } from '../secrets/detector.js';
+import { SecretDetectionConfig } from '../config/defaults.js';
 import { createSchemaFromAnnotations } from '../validator/schema.js';
 import { ValidationError, validateFieldValue } from '../validator/type-validator.js';
 
@@ -31,6 +32,7 @@ export interface DiffOptions {
   codeKeys?: Set<string>;
   codeReferences?: Map<string, CodeReference[]>;
   sourceSecrets?: SecretFinding[];
+  secretDetection?: SecretDetectionConfig;
 }
 
 /**
@@ -41,6 +43,7 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
   const exampleVars = options.exampleAst?.variables || new Map<string, EnvVariable>();
   const codeKeys = options.codeKeys || new Set<string>();
   const codeReferences = options.codeReferences || new Map<string, CodeReference[]>();
+  const secretDetection = options.secretDetection || {};
 
   const missingInEnv: DiffResult['missingInEnv'] = [];
   const missingInExample: DiffResult['missingInExample'] = [];
@@ -53,7 +56,10 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
   if (options.exampleAst) {
     for (const [key, envVar] of exampleVars.entries()) {
       const findings = detectSecretsInValue(envVar.value, key, envVar.line, {
-        file: options.exampleAst.filePath || '.env.example'
+        file: options.exampleAst.filePath || '.env.example',
+        entropyThreshold: secretDetection.entropyThreshold,
+        minLength: secretDetection.minLength,
+        allowHighEntropy: secretDetection.allowHighEntropy
       });
       secretLeaks.push(...findings);
     }
@@ -63,7 +69,10 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
   if (options.envAst) {
     for (const [key, envVar] of envVars.entries()) {
       const findings = detectSecretsInValue(envVar.value, key, envVar.line, {
-        file: options.envAst.filePath || '.env'
+        file: options.envAst.filePath || '.env',
+        entropyThreshold: secretDetection.entropyThreshold,
+        minLength: secretDetection.minLength,
+        allowHighEntropy: secretDetection.allowHighEntropy
       });
       secretLeaks.push(...findings);
     }

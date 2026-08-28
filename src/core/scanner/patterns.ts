@@ -20,12 +20,12 @@ export const LANGUAGE_PATTERNS: LanguagePattern[] = [
     language: 'typescript',
     regexes: [
       /\bprocess\.env(?:\.|\?\.)([A-Za-z_][A-Za-z0-9_]*)\b/g,
-      /\bprocess\.env(?:\?\.)?\[['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\]/g,
+      /\bprocess\.env(?:\?\.)?\[\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\]/g,
       /\bimport\.meta\.env(?:\.|\?\.)([A-Za-z_][A-Za-z0-9_]*)\b/g,
-      /\bimport\.meta\.env(?:\?\.)?\[['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\]/g,
+      /\bimport\.meta\.env(?:\?\.)?\[\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\]/g,
       /\bBun\.env(?:\.|\?\.)([A-Za-z_][A-Za-z0-9_]*)\b/g,
-      /\bBun\.env(?:\?\.)?\[['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\]/g,
-      /\bDeno\.env\.get\(['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\)/g
+      /\bBun\.env(?:\?\.)?\[\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\]/g,
+      /\bDeno\.env\.get\(\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\)/g
     ]
   },
   // Python
@@ -33,10 +33,10 @@ export const LANGUAGE_PATTERNS: LanguagePattern[] = [
     extensions: ['.py'],
     language: 'python',
     regexes: [
-      /\bos\.environ\[['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\]/g,
-      /\bos\.environ\.get\(['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]/g,
-      /\bos\.getenv\(['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]/g,
-      /\bgetenv\(['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]/g
+      /\bos\.environ\[\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\]/g,
+      /\bos\.environ\.get\(\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]/g,
+      /\bos\.getenv\(\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]/g,
+      /\bgetenv\(\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]/g
     ]
   },
   // Go
@@ -44,8 +44,8 @@ export const LANGUAGE_PATTERNS: LanguagePattern[] = [
     extensions: ['.go'],
     language: 'go',
     regexes: [
-      /\bos\.Getenv\(['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\)/g,
-      /\bos\.LookupEnv\(['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\)/g
+      /\bos\.Getenv\(\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\)/g,
+      /\bos\.LookupEnv\(\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\)/g
     ]
   },
   // Rust
@@ -53,9 +53,9 @@ export const LANGUAGE_PATTERNS: LanguagePattern[] = [
     extensions: ['.rs'],
     language: 'rust',
     regexes: [
-      /\bstd::env::var(?:_os)?\(['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\)/g,
-      /\benv::var(?:_os)?\(['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\)/g,
-      /\bdotenvy::var\(['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\)/g
+      /\bstd::env::var(?:_os)?\(\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\)/g,
+      /\benv::var(?:_os)?\(\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\)/g,
+      /\bdotenvy::var\(\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\)/g
     ]
   },
   // PHP
@@ -63,8 +63,8 @@ export const LANGUAGE_PATTERNS: LanguagePattern[] = [
     extensions: ['.php'],
     language: 'php',
     regexes: [
-      /\$_ENV\[['"`]([A-Z_][A-Z0-9_]*)['"`]\]/g,
-      /\bgetenv\(['"`]([A-Z_][A-Z0-9_]*)['"`]\)/g
+      /\$_ENV\[\s*['"`]([A-Z_][A-Z0-9_]*)['"`]\s*\]/g,
+      /\bgetenv\(\s*['"`]([A-Z_][A-Z0-9_]*)['"`]\s*\)/g
     ]
   },
   // Ruby
@@ -72,8 +72,8 @@ export const LANGUAGE_PATTERNS: LanguagePattern[] = [
     extensions: ['.rb'],
     language: 'ruby',
     regexes: [
-      /\bENV\[['"`]([A-Z_][A-Z0-9_]*)['"`]\]/g,
-      /\bENV\.fetch\(['"`]([A-Z_][A-Z0-9_]*)['"`]/g
+      /\bENV\[\s*['"`]([A-Z_][A-Z0-9_]*)['"`]\s*\]/g,
+      /\bENV\.fetch\(\s*['"`]([A-Z_][A-Z0-9_]*)['"`]/g
     ]
   },
   // Docker & Compose
