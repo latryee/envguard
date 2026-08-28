@@ -10,6 +10,13 @@ export function renderGitHubReport(diff: DiffResult): string {
     lines.push(`::error file=${file}${line},title=Secret Leak::[${leak.ruleName}] ${leak.description}`);
   }
 
+  // Client leaks
+  if (diff.clientLeaks) {
+    for (const cl of diff.clientLeaks) {
+      lines.push(`::error file=${cl.filePath} line=${cl.line},title=Client Bundle Secret Leak::${cl.message}`);
+    }
+  }
+
   // Type mismatches
   for (const err of diff.typeMismatches) {
     const line = err.line ? ` line=${err.line}` : '';

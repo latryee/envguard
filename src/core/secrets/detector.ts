@@ -1,6 +1,10 @@
 import { SECRET_RULES, SecretRule } from './rules.js';
 import { isSafePlaceholder } from './whitelist.js';
-import { calculateShannonEntropy, isHighEntropyString } from './entropy.js';
+import {
+  calculateNormalizedShannonEntropy,
+  isHighEntropyString,
+  CharacterSetType
+} from './entropy.js';
 
 export interface SecretFinding {
   ruleId: string;
@@ -14,6 +18,8 @@ export interface SecretFinding {
   line?: number;
   snippetMasked: string;
   entropy?: number;
+  normalizedEntropy?: number;
+  charset?: CharacterSetType;
   confidence: number; // 0 - 100
   confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW';
   commitHash?: string;
@@ -45,11 +51,12 @@ export function maskSecret(secret: string): string {
   return `${secret.slice(0, 4)}...${secret.slice(-4)}`;
 }
 
-function calculateFindingConfidence(
+export function calculateFindingConfidence(
   baseScore: number,
   entropy: number,
   key?: string,
-  ruleId?: string
+  ruleId?: string,
+  normalizedEntropy = 0
 ): { confidence: number; confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' } {
   let score = baseScore;
 
@@ -62,7 +69,8 @@ function calculateFindingConfidence(
     upperKey.includes('PASS') ||
     upperKey.includes('PRIVATE') ||
     upperKey.includes('CREDENTIAL') ||
-    upperKey.includes('API');
+    upperKey.includes('API') ||
+    upperKey.includes('SIGNING');
 
   const isNonSecretKey =
     upperKey.includes('HASH') ||
@@ -80,14 +88,18 @@ function calculateFindingConfidence(
     } else if (isNonSecretKey) {
       score -= 20;
     }
-    if (entropy >= 4.8) {
+    if (normalizedEntropy >= 0.80 || entropy >= 4.8) {
       score += 10;
+    } else if (normalizedEntropy < 0.60 && entropy < 4.0) {
+      score -= 15;
     }
   } else {
     if (isSecretKey) {
       score += 5;
+    } else if (isNonSecretKey) {
+      score -= 10;
     }
-    if (entropy >= 4.5) {
+    if (normalizedEntropy >= 0.75 || entropy >= 4.5) {
       score += 5;
     }
   }
@@ -125,12 +137,13 @@ export function detectSecretsInValue(
     if (match) {
       const matchedStr = match[0];
       if (!isSafePlaceholder(matchedStr)) {
-        const entropy = Number(calculateShannonEntropy(matchedStr).toFixed(2));
+        const entropyInfo = calculateNormalizedShannonEntropy(matchedStr);
         const { confidence, confidenceLevel } = calculateFindingConfidence(
           rule.confidenceBase ?? 90,
-          entropy,
+          entropyInfo.entropy,
           key,
-          rule.id
+          rule.id,
+          entropyInfo.normalizedEntropy
         );
 
         findings.push({
@@ -144,7 +157,9 @@ export function detectSecretsInValue(
           file: options.file,
           line,
           snippetMasked: maskSecret(matchedStr),
-          entropy,
+          entropy: entropyInfo.entropy,
+          normalizedEntropy: entropyInfo.normalizedEntropy,
+          charset: entropyInfo.charset,
           confidence,
           confidenceLevel,
           commitHash: options.commitHash,
@@ -160,12 +175,13 @@ export function detectSecretsInValue(
     const threshold = options.entropyThreshold ?? 4.3;
     const minLength = options.minLength ?? 20;
     if (isHighEntropyString(value, threshold, minLength)) {
-      const entropy = Number(calculateShannonEntropy(value).toFixed(2));
+      const entropyInfo = calculateNormalizedShannonEntropy(value);
       const { confidence, confidenceLevel } = calculateFindingConfidence(
         55,
-        entropy,
+        entropyInfo.entropy,
         key,
-        'high-entropy-secret'
+        'high-entropy-secret',
+        entropyInfo.normalizedEntropy
       );
 
       findings.push({
@@ -173,13 +189,15 @@ export function detectSecretsInValue(
         ruleName: 'High-Entropy Secret String',
         category: 'generic',
         severity: 'high',
-        description: `Potential unclassified secret detected (Shannon entropy: ${entropy} > ${threshold}).`,
+        description: `Potential unclassified secret detected (Shannon entropy: ${entropyInfo.entropy} > ${threshold}).`,
         remediation: 'Verify if this is an API key/token. Use a placeholder (e.g. your_key_here) in template files.',
         variableKey: key,
         file: options.file,
         line,
         snippetMasked: maskSecret(value),
-        entropy,
+        entropy: entropyInfo.entropy,
+        normalizedEntropy: entropyInfo.normalizedEntropy,
+        charset: entropyInfo.charset,
         confidence,
         confidenceLevel,
         commitHash: options.commitHash,

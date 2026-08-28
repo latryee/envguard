@@ -35,8 +35,14 @@ export { isClientContext, checkClientSideExposures } from './core/frameworks/cli
 export type { ClientExposureFinding } from './core/frameworks/client-leak.js';
 
 // Secrets & Entropy
-export { calculateShannonEntropy, isHighEntropyString } from './core/secrets/entropy.js';
-export { detectSecretsInValue, maskSecret } from './core/secrets/detector.js';
+export {
+  calculateShannonEntropy,
+  calculateNormalizedShannonEntropy,
+  detectCharacterSet,
+  isHighEntropyString
+} from './core/secrets/entropy.js';
+export type { CharsetEntropyInfo, CharacterSetType } from './core/secrets/entropy.js';
+export { detectSecretsInValue, maskSecret, calculateFindingConfidence } from './core/secrets/detector.js';
 export type { SecretFinding, DetectSecretsOptions } from './core/secrets/detector.js';
 export { SECRET_RULES } from './core/secrets/rules.js';
 export type { SecretRule } from './core/secrets/rules.js';
@@ -74,14 +80,22 @@ export type { DockerAuditResult, DockerFinding } from './core/docker/docker-guar
 export { generateCompletionScript } from './core/completion/generator.js';
 export type { ShellType } from './core/completion/generator.js';
 
-// Sync, Interactive Wizard & Masking
+// Sync, Interactive Wizard, Drift Watchdog & Masking
 export { syncEnvExample } from './core/sync/env-syncer.js';
 export type { SyncOptions, SyncResult } from './core/sync/env-syncer.js';
 export { runInteractiveSync } from './core/sync/interactive-syncer.js';
 export type { InteractiveSyncOptions, InteractiveSyncResult } from './core/sync/interactive-syncer.js';
 export { generateSafePlaceholder } from './core/sync/masker.js';
+export { watchEnvironmentDrift, formatDriftReport } from './core/sync/drift-watchdog.js';
+export type {
+  DriftReport,
+  DriftDivergence,
+  DriftSeverity,
+  DriftDivergenceKind,
+  DriftWatchdogOptions
+} from './core/sync/drift-watchdog.js';
 
-// Vault & Infrastructure Exporters
+// Vault Resilience & Infrastructure Exporters
 export {
   exportToK8sSecret,
   exportToDockerCompose,
@@ -94,10 +108,34 @@ export {
 export type { ExportFormat, ExporterOptions } from './core/vault/exporter.js';
 export { pullFromVault } from './core/vault/providers.js';
 export type { PullSecretsOptions, PullSecretsResult, VaultProvider } from './core/vault/providers.js';
+export {
+  ResilientExecutor,
+  sanitizeErrorMessage,
+  maskObjectSecrets
+} from './core/vault/resilience.js';
+export type {
+  CircuitState,
+  CircuitBreakerOptions,
+  CircuitBreakerStats
+} from './core/vault/resilience.js';
 
-// IDE & VS Code Integration
+// IDE, VS Code & Language Server Protocol (LSP) Integration
 export { setupVsCodeIntegration } from './core/ide/vscode.js';
 export type { VsCodeSetupResult } from './core/ide/vscode.js';
+export {
+  generateLspDiagnostics,
+  toLspRange,
+  LspDiagnosticSeverity,
+  LspDiagnosticTag
+} from './core/ide/lsp-diagnostics.js';
+export type {
+  LspDiagnostic,
+  LspPosition,
+  LspRange,
+  LspLocation,
+  LspDiagnosticRelatedInformation,
+  FileLspDiagnostics
+} from './core/ide/lsp-diagnostics.js';
 
 // Generator
 export { generateTypeDeclarations } from './core/generator/types-generator.js';

@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { parseEnv } from '../parser/env-parser.js';
 import { EnvFileAst } from '../parser/types.js';
+import { ResilientExecutor, CircuitBreakerOptions, sanitizeErrorMessage } from './resilience.js';
 
 export type VaultProvider = 'doppler' | 'infisical' | '1password' | 'aws' | 'vault';
 
@@ -11,6 +12,7 @@ export interface PullSecretsOptions {
   vaultSecretId?: string;
   cwd?: string;
   execFn?: (cmd: string) => string;
+  circuitBreakerOptions?: CircuitBreakerOptions;
 }
 
 export interface PullSecretsResult {
@@ -21,7 +23,7 @@ export interface PullSecretsResult {
 }
 
 /**
- * Pulls secrets from a supported Cloud Secret Manager CLI
+ * Pulls secrets from a supported Cloud Secret Manager CLI with circuit breaker resilience and secret sanitization.
  */
 export function pullFromVault(options: PullSecretsOptions): PullSecretsResult {
   const cwd = options.cwd ?? process.cwd();
@@ -55,10 +57,15 @@ export function pullFromVault(options: PullSecretsOptions): PullSecretsResult {
     }
   }
 
+  const executor = new ResilientExecutor(options.circuitBreakerOptions);
+
   try {
-    const rawOutput = options.execFn
-      ? options.execFn(cmd)
-      : execSync(cmd, { cwd, stdio: 'pipe', encoding: 'utf8' });
+    const rawOutput = executor.executeSync(() => {
+      return options.execFn
+        ? options.execFn(cmd)
+        : execSync(cmd, { cwd, stdio: 'pipe', encoding: 'utf8' });
+    });
+
     let envContent = rawOutput;
 
     // If output is JSON (e.g. AWS or Vault), convert to KEY=VAL
@@ -82,8 +89,9 @@ export function pullFromVault(options: PullSecretsOptions): PullSecretsResult {
       ast
     };
   } catch (err: any) {
+    const sanitized = sanitizeErrorMessage(err.message || String(err));
     throw new Error(
-      `Failed to pull secrets from ${options.provider} (Command: "${cmd}"): ${err.message || String(err)}`
+      `Failed to pull secrets from ${options.provider} (Command: "${cmd}"): ${sanitized}`
     );
   }
 }

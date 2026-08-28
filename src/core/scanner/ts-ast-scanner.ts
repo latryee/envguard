@@ -10,13 +10,19 @@ export interface TsAstScanOptions {
 }
 
 /**
- * Checks if an AST expression represents a known environment object (process.env, import.meta.env, Bun.env).
+ * Checks if an AST expression represents a known environment object (process.env, import.meta.env, Bun.env) or an alias.
  */
-function isEnvObject(node: ts.Node): 'process.env' | 'import.meta.env' | 'Bun.env' | null {
-  // process.env or process?.env
+function isEnvExpression(node: ts.Node, aliases: Set<string>): 'process.env' | 'import.meta.env' | 'Bun.env' | 'alias' | null {
+  // Direct identifier alias (e.g. env.SECRET where const env = process.env)
+  if (ts.isIdentifier(node) && aliases.has(node.text)) {
+    return 'alias';
+  }
+
+  // Property access expression: process.env, Bun.env, import.meta.env
   if (ts.isPropertyAccessExpression(node)) {
     const expr = node.expression;
     const name = node.name.text;
+
     if (name === 'env') {
       if (ts.isIdentifier(expr) && expr.text === 'process') {
         return 'process.env';
@@ -34,6 +40,7 @@ function isEnvObject(node: ts.Node): 'process.env' | 'import.meta.env' | 'Bun.en
       }
     }
   }
+
   return null;
 }
 
@@ -66,6 +73,7 @@ export function scanTsAst(options: TsAstScanOptions): CodeReference[] {
 
   const references: CodeReference[] = [];
   const lines = content.split(/\r?\n/);
+  const envAliases = new Set<string>();
 
   function addReference(key: string, node: ts.Node) {
     if (!key || (ignoredKeys && ignoredKeys.has(key))) {
@@ -94,6 +102,12 @@ export function scanTsAst(options: TsAstScanOptions): CodeReference[] {
   function handleBindingPattern(pattern: ts.BindingPattern) {
     for (const element of pattern.elements) {
       if (ts.isBindingElement(element)) {
+        // Handle nested destructuring: { nested: { SECRET } }
+        if (ts.isObjectBindingPattern(element.name)) {
+          handleBindingPattern(element.name);
+          continue;
+        }
+
         // e.g. { FOO } or { FOO: renamed } or { FOO = 'default' }
         if (element.propertyName && ts.isIdentifier(element.propertyName)) {
           // Destructured with rename: { FOO: renamed } -> key is FOO
@@ -110,16 +124,30 @@ export function scanTsAst(options: TsAstScanOptions): CodeReference[] {
   }
 
   function visit(node: ts.Node) {
+    // 0. Track aliased env wrappers: const env = process.env; or const myEnv = import.meta.env;
+    if (ts.isVariableDeclaration(node) && node.initializer && ts.isIdentifier(node.name)) {
+      if (isEnvExpression(node.initializer, envAliases)) {
+        envAliases.add(node.name.text);
+      }
+    }
+
     // 1. Variable declaration with destructuring: const { FOO, BAR: b } = process.env;
     if (ts.isVariableDeclaration(node) && node.initializer && ts.isObjectBindingPattern(node.name)) {
-      if (isEnvObject(node.initializer)) {
+      if (isEnvExpression(node.initializer, envAliases)) {
+        handleBindingPattern(node.name);
+      }
+    }
+
+    // 1b. Parameter destructuring with default: function test({ API_KEY } = process.env)
+    if (ts.isParameter(node) && node.initializer && ts.isObjectBindingPattern(node.name)) {
+      if (isEnvExpression(node.initializer, envAliases)) {
         handleBindingPattern(node.name);
       }
     }
 
     // 2. Binary assignment with destructuring: ({ FOO, BAR } = process.env);
     if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-      if (ts.isObjectLiteralExpression(node.left) && isEnvObject(node.right)) {
+      if (ts.isObjectLiteralExpression(node.left) && isEnvExpression(node.right, envAliases)) {
         for (const prop of node.left.properties) {
           if (ts.isShorthandPropertyAssignment(prop)) {
             addReference(prop.name.text, prop.name);
@@ -134,23 +162,21 @@ export function scanTsAst(options: TsAstScanOptions): CodeReference[] {
       }
     }
 
-    // 3. Property access: process.env.FOO or process.env?.FOO
+    // 3. Property access: process.env.FOO or env.FOO or process.env?.FOO
     if (ts.isPropertyAccessExpression(node)) {
-      const envType = isEnvObject(node.expression);
+      const envType = isEnvExpression(node.expression, envAliases);
       if (envType) {
         addReference(node.name.text, node.name);
       }
     }
 
-    // 4. Element access: process.env['FOO'] or process.env?.['FOO']
+    // 4. Element access: process.env['FOO'] or env['FOO'] or process.env?.['FOO']
     if (ts.isElementAccessExpression(node)) {
-      const envType = isEnvObject(node.expression);
+      const envType = isEnvExpression(node.expression, envAliases);
       if (envType && node.argumentExpression) {
         if (ts.isStringLiteral(node.argumentExpression)) {
           addReference(node.argumentExpression.text, node.argumentExpression);
-        } else if (
-          ts.isNoSubstitutionTemplateLiteral(node.argumentExpression)
-        ) {
+        } else if (ts.isNoSubstitutionTemplateLiteral(node.argumentExpression)) {
           addReference(node.argumentExpression.text, node.argumentExpression);
         }
       }

@@ -48,13 +48,44 @@ export const SAFE_PLACEHOLDERS = [
 export function isSafePlaceholder(value: string): boolean {
   if (!value) return true;
 
-  const lower = value.trim().toLowerCase();
+  const trimmed = value.trim();
+  const lower = trimmed.toLowerCase();
 
   // Exact matches
   if (SAFE_PLACEHOLDERS.includes(lower)) return true;
 
   // Repetitive or dummy markers
   if (/^(\*+|x+|X+|0+|1+|_+|-+)$/.test(lower)) return true;
+
+  // UUIDs (standard, URN, uppercase/lowercase)
+  if (/^(?:urn:uuid:)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i.test(trimmed)) {
+    return true;
+  }
+
+  // Pure 40-char SHA1 or 64-char SHA256 git/build hashes
+  if (/^[0-9a-f]{40}$/.test(trimmed) || /^[0-9a-f]{64}$/.test(trimmed)) {
+    return true;
+  }
+
+  // Base64 Data URIs (e.g. data:image/png;base64,...)
+  if (/^data:[a-zA-Z0-9/+-]+;base64,/i.test(trimmed)) {
+    return true;
+  }
+
+  // Webpack / Vite / Rollup build asset chunk filenames
+  if (/\b(?:chunk|bundle|vendor|app|main)[-._][0-9a-fA-F]{8,32}\.(?:js|css|map)$/i.test(trimmed)) {
+    return true;
+  }
+
+  // CSS module or CSP nonce classes
+  if (/^(?:css-module-|nonce-)/i.test(trimmed)) {
+    return true;
+  }
+
+  // Unsigned / Mock JWTs (alg: "none")
+  if (/^eyJhbGciOiJub25lIiw/i.test(trimmed)) {
+    return true;
+  }
 
   // Contains obvious placeholder flags
   if (
@@ -65,10 +96,13 @@ export function isSafePlaceholder(value: string): boolean {
     lower.includes('replace_me') ||
     lower.includes('insert_') ||
     lower.includes('change_me') ||
+    lower.includes('changeme') ||
     lower.includes('example.com') ||
     lower.includes('localhost') ||
     lower.includes('127.0.0.1') ||
-    lower.includes('placeholder')
+    lower.includes('placeholder') ||
+    lower.includes('dummy') ||
+    lower.includes('test_secret')
   ) {
     return true;
   }

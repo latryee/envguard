@@ -17,6 +17,7 @@ import {
 import { getStagedFileContent } from '../git/git-utils.js';
 import { SecretFinding, detectSecretsInValue } from '../secrets/detector.js';
 import { scanTsAst } from './ts-ast-scanner.js';
+import { ClientExposureFinding, checkClientSideExposures } from '../frameworks/client-leak.js';
 
 export interface ScanOptions {
   cwd?: string;
@@ -37,6 +38,7 @@ export interface ScanResult {
   keyLocations: Map<string, CodeReference[]>;
   scannedFilesCount: number;
   secretLeaks: SecretFinding[];
+  clientLeaks: ClientExposureFinding[];
 }
 
 /**
@@ -298,7 +300,8 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
       uniqueKeys: new Set(),
       keyLocations: new Map(),
       scannedFilesCount: 0,
-      secretLeaks: []
+      secretLeaks: [],
+      clientLeaks: []
     };
   }
 
@@ -334,6 +337,7 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
   const uniqueKeys = new Set<string>();
   const keyLocations = new Map<string, CodeReference[]>();
   const secretLeaks: SecretFinding[] = [];
+  const fileContents = new Map<string, string>();
   let scannedFilesCount = 0;
 
   for (const file of files) {
@@ -363,6 +367,8 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
     scannedFilesCount++;
 
     const relFilePath = path.relative(cwd, file).replace(/\\/g, '/');
+    fileContents.set(relFilePath, content);
+    fileContents.set(file, content);
     const lines = content.split(/\r?\n/);
     const inlineIgnores = parseInlineDirectives(content);
 
@@ -464,11 +470,15 @@ export async function scanCodebase(options: ScanOptions = {}): Promise<ScanResul
     }
   }
 
+  // 3. Check for framework client-side leak exposures
+  const clientLeaks = checkClientSideExposures(references, fileContents, cwd);
+
   return {
     references,
     uniqueKeys,
     keyLocations,
     scannedFilesCount,
-    secretLeaks
+    secretLeaks,
+    clientLeaks
   };
 }

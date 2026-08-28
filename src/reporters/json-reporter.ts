@@ -7,6 +7,7 @@ export function renderJsonReport(diff: DiffResult): string {
       status: diff.hasErrors ? 'failed' : diff.hasWarnings ? 'warning' : 'passed',
       summary: diff.summary,
       secretLeaks: diff.secretLeaks,
+      clientLeaks: diff.clientLeaks || [],
       missingInEnv: diff.missingInEnv,
       missingInExample: diff.missingInExample,
       staleInExample: diff.staleInExample,

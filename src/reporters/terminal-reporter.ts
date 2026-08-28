@@ -34,6 +34,19 @@ export function renderTerminalReport(diff: DiffResult, options: TerminalReporter
     }
   }
 
+  // 1b. Client-Side Framework Leakage (CRITICAL ALERT)
+  if (diff.clientLeaks && diff.clientLeaks.length > 0) {
+    addLine(pc.bgRed(pc.white(pc.bold(' 🛡️ CRITICAL: FRAMEWORK CLIENT-SIDE LEAK DETECTED '))) + '\n');
+    for (const cl of diff.clientLeaks) {
+      const loc = `${cl.filePath}:${cl.line}`;
+      addLine(`  ${pc.red('●')} ${pc.bold('Client Bundle Secret Leak')} in variable ${pc.bold(cl.key)} ${pc.dim(`at ${loc}`)}`);
+      addLine(`    ${pc.dim('Framework:')} ${pc.cyan(cl.framework)} (requires prefix ${pc.yellow(cl.expectedPrefix)})`);
+      addLine(`    ${pc.dim('Violation:')} ${cl.message}`);
+      addLine(`    ${pc.dim('Fix:')}       ${pc.green(`Rename to ${cl.expectedPrefix}${cl.key} or move logic to a Server Component/Route handler.`)}`);
+      addLine();
+    }
+  }
+
   // 2. Missing in .env (Runtime crash risk)
   if (diff.missingInEnv.length > 0) {
     const requiredMissing = diff.missingInEnv.filter((m) => m.required);
@@ -97,10 +110,12 @@ export function renderTerminalReport(diff: DiffResult, options: TerminalReporter
   }
 
   // 6. Summary Stats
+  const clientLeaksCount = diff.clientLeaks ? diff.clientLeaks.length : 0;
   const errors =
     diff.missingInEnv.filter((m) => m.required).length +
     diff.typeMismatches.length +
-    diff.secretLeaks.length;
+    diff.secretLeaks.length +
+    clientLeaksCount;
 
   const warnings =
     diff.missingInEnv.filter((m) => !m.required).length +

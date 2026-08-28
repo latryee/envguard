@@ -80,6 +80,7 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
           codeKeys: scanResult.uniqueKeys,
           codeReferences: scanResult.keyLocations,
           sourceSecrets: scanResult.secretLeaks,
+          clientLeaks: scanResult.clientLeaks,
           secretDetection: {
             ...config.secretDetection,
             paranoid: isParanoid
@@ -176,6 +177,7 @@ export async function runCheck(options: CheckCommandOptions = {}): Promise<numbe
     codeKeys: scanResult.uniqueKeys,
     codeReferences: scanResult.keyLocations,
     sourceSecrets: scanResult.secretLeaks,
+    clientLeaks: scanResult.clientLeaks,
     secretDetection: {
       ...config.secretDetection,
       paranoid: isParanoid

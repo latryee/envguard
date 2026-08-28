@@ -7,7 +7,8 @@ import { DiffResult } from '../core/diff/env-differ.js';
 export function renderPrCommentReport(diff: DiffResult): string {
   const lines: string[] = [];
 
-  const totalErrors = diff.missingInEnv.length + diff.typeMismatches.length + diff.secretLeaks.length;
+  const clientLeaksCount = diff.clientLeaks ? diff.clientLeaks.length : 0;
+  const totalErrors = diff.missingInEnv.filter((m) => m.required).length + diff.typeMismatches.length + diff.secretLeaks.length + clientLeaksCount;
   const totalWarnings = diff.missingInExample.length + diff.staleInExample.length;
 
   let statusBadge = '🟢 **Passed**';
@@ -29,6 +30,17 @@ export function renderPrCommentReport(diff: DiffResult): string {
       const loc = leak.file ? `\`${leak.file}:${leak.line ?? 1}\`` : `Variable \`${leak.variableKey ?? 'UNKNOWN'}\``;
       const conf = `**${leak.confidenceLevel || 'HIGH'}** (${leak.confidence ?? 95}%)`;
       lines.push(`| **${leak.ruleName}** | ${loc} | ${conf} | ${leak.remediation || 'Rotate immediately'} |`);
+    }
+    lines.push('');
+  }
+
+  // 1b. Critical Client Leaks
+  if (diff.clientLeaks && diff.clientLeaks.length > 0) {
+    lines.push(`### 🛡️ Critical: Client Bundle Secret Leaks (${diff.clientLeaks.length})`);
+    lines.push(`| Variable | Location | Framework | Required Prefix |`);
+    lines.push(`|---|---|---|---|`);
+    for (const cl of diff.clientLeaks) {
+      lines.push(`| \`${cl.key}\` | \`${cl.filePath}:${cl.line}\` | **${cl.framework}** | \`${cl.expectedPrefix}\` |`);
     }
     lines.push('');
   }

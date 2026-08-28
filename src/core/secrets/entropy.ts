@@ -1,3 +1,39 @@
+export type CharacterSetType = 'hex' | 'base64' | 'alphanumeric' | 'ascii';
+
+export interface CharsetEntropyInfo {
+  entropy: number;
+  normalizedEntropy: number; // 0.0 to 1.0
+  charset: CharacterSetType;
+  baseSize: number;
+  maxTheoreticalEntropy: number;
+}
+
+/**
+ * Detects the dominant character set of a string and returns its theoretical maximum entropy.
+ */
+export function detectCharacterSet(str: string): { charset: CharacterSetType; baseSize: number; maxTheoreticalEntropy: number } {
+  if (!str || str.length === 0) {
+    return { charset: 'ascii', baseSize: 256, maxTheoreticalEntropy: 8.0 };
+  }
+
+  const isHex = /^[0-9a-fA-F]+$/.test(str);
+  if (isHex) {
+    return { charset: 'hex', baseSize: 16, maxTheoreticalEntropy: 4.0 };
+  }
+
+  const isAlphaNumeric = /^[0-9a-zA-Z]+$/.test(str);
+  if (isAlphaNumeric) {
+    return { charset: 'alphanumeric', baseSize: 62, maxTheoreticalEntropy: Math.log2(62) };
+  }
+
+  const isBase64 = /^[0-9a-zA-Z+/=_-]+$/.test(str);
+  if (isBase64) {
+    return { charset: 'base64', baseSize: 64, maxTheoreticalEntropy: 6.0 };
+  }
+
+  return { charset: 'ascii', baseSize: 256, maxTheoreticalEntropy: 8.0 };
+}
+
 /**
  * Calculates the Shannon Entropy of a string.
  * Higher entropy indicates higher randomness (typical for cryptographic keys, hashes, tokens).
@@ -21,6 +57,24 @@ export function calculateShannonEntropy(str: string): number {
   }
 
   return entropy;
+}
+
+/**
+ * Calculates normalized Shannon entropy relative to the theoretical maximum entropy of the detected character set.
+ * Returns a normalized score between 0.0 (zero randomness) and 1.0 (maximal theoretical randomness for that character set).
+ */
+export function calculateNormalizedShannonEntropy(str: string): CharsetEntropyInfo {
+  const entropy = calculateShannonEntropy(str);
+  const { charset, baseSize, maxTheoreticalEntropy } = detectCharacterSet(str);
+  const normalizedEntropy = maxTheoreticalEntropy > 0 ? Math.min(1.0, entropy / maxTheoreticalEntropy) : 0;
+
+  return {
+    entropy: Number(entropy.toFixed(4)),
+    normalizedEntropy: Number(normalizedEntropy.toFixed(4)),
+    charset,
+    baseSize,
+    maxTheoreticalEntropy: Number(maxTheoreticalEntropy.toFixed(4))
+  };
 }
 
 /**

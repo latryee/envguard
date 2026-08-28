@@ -4,6 +4,7 @@ import { SecretFinding, detectSecretsInValue } from '../secrets/detector.js';
 import { SecretDetectionConfig } from '../config/defaults.js';
 import { createSchemaFromAnnotations } from '../validator/schema.js';
 import { ValidationError, validateFieldValue } from '../validator/type-validator.js';
+import { ClientExposureFinding } from '../frameworks/client-leak.js';
 
 export interface DiffResult {
   missingInEnv: Array<{ key: string; required: boolean; default?: string; source: 'example' | 'code'; references?: CodeReference[] }>;
@@ -11,6 +12,7 @@ export interface DiffResult {
   staleInExample: Array<{ key: string; line: number }>;
   typeMismatches: ValidationError[];
   secretLeaks: SecretFinding[];
+  clientLeaks: ClientExposureFinding[];
   unusedInEnv: Array<{ key: string; line: number }>;
   hasErrors: boolean;
   hasWarnings: boolean;
@@ -23,6 +25,7 @@ export interface DiffResult {
     staleCount: number;
     typeErrorsCount: number;
     secretsCount: number;
+    clientLeaksCount: number;
   };
 }
 
@@ -32,6 +35,7 @@ export interface DiffOptions {
   codeKeys?: Set<string>;
   codeReferences?: Map<string, CodeReference[]>;
   sourceSecrets?: SecretFinding[];
+  clientLeaks?: ClientExposureFinding[];
   secretDetection?: SecretDetectionConfig;
 }
 
@@ -50,6 +54,7 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
   const staleInExample: DiffResult['staleInExample'] = [];
   const typeMismatches: ValidationError[] = [];
   const secretLeaks: SecretFinding[] = [];
+  const clientLeaks: ClientExposureFinding[] = options.clientLeaks || [];
   const unusedInEnv: DiffResult['unusedInEnv'] = [];
 
   // 1a. Check for secret leaks in .env.example (CRITICAL: must never contain real secrets)
@@ -182,7 +187,8 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
   const criticalErrorsCount =
     missingInEnv.filter((m) => m.required).length +
     typeMismatches.length +
-    secretLeaks.length;
+    secretLeaks.length +
+    clientLeaks.length;
 
   const warningsCount =
     missingInEnv.filter((m) => !m.required).length +
@@ -195,6 +201,7 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
     staleInExample,
     typeMismatches,
     secretLeaks,
+    clientLeaks,
     unusedInEnv,
     hasErrors: criticalErrorsCount > 0,
     hasWarnings: warningsCount > 0,
@@ -206,7 +213,8 @@ export function computeEnvDiff(options: DiffOptions): DiffResult {
       missingInExampleCount: missingInExample.length,
       staleCount: staleInExample.length,
       typeErrorsCount: typeMismatches.length,
-      secretsCount: secretLeaks.length
+      secretsCount: secretLeaks.length,
+      clientLeaksCount: clientLeaks.length
     }
   };
 }

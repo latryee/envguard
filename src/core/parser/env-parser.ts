@@ -40,9 +40,10 @@ export function parseAnnotations(commentText: string): EnvAnnotations {
     }
   }
 
-  // Match @required / @optional
-  if (/@required\b/i.test(commentText)) {
-    annotations.required = true;
+  // Match @required (true|false) / @optional
+  const reqMatch = commentText.match(/@required(?:\s+(true|false))?/i);
+  if (reqMatch) {
+    annotations.required = reqMatch[1] ? reqMatch[1].toLowerCase() === 'true' : true;
   } else if (/@optional\b/i.test(commentText)) {
     annotations.required = false;
   }
