@@ -47,7 +47,7 @@
     }
   },
   "bin": {
-    "envguard": "dist/cli.js"
+    "envguard": "./dist/cli.js"
   },
   "files": [
     "dist",

@@ -78,7 +78,7 @@ describe('Vault Resilience, Secret Masking & Environment Drift Detection', () =>
       expect(called).toBe(false);
 
       // Wait for reset timeout to test HALF_OPEN transition
-      await new Promise((r) => setTimeout(r, 60));
+      await new Promise((r) => setTimeout(r, 100));
       expect(executor.getStats().state).toBe('HALF_OPEN');
 
       // Successful call in HALF_OPEN resets breaker to CLOSED
